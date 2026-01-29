@@ -1,7 +1,7 @@
 import QRCode from 'qrcode.react';
 import { useEffect, useState } from 'react';
 
-const Profile = () => {
+export default function Profile() {
   const [userId, setUserId] = useState('');
 
   useEffect(() => {
@@ -9,16 +9,16 @@ const Profile = () => {
   }, []);
 
   return (
-    <div>
+    <div style={{ padding: 20, textAlign: 'center' }}>
       <h2>Мой профиль</h2>
-      {userId && (
+      {userId ? (
         <>
           <p>ID: {userId}</p>
           <QRCode value={`aist://user/${userId}`} size={200} />
         </>
+      ) : (
+        <p>Не авторизован. <a href="/">Войти</a></p>
       )}
     </div>
   );
-};
-
-export default Profile;
+}

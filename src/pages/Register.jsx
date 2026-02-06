@@ -3,30 +3,44 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 /**
  * AIST PWA Messenger — Register/Login screen
  * Auth flow: user requests a one-time code delivered via Telegram bot, then verifies it.
+ * Авторизация по номеру телефона (подтверждённому через бота @AIST_SMS_BOT)
  *
- * Backend endpoints expected (adjust in code if different):
- * - POST /api/auth/request-code { telegram: "@username" | "username" }
+ * Backend endpoints:
+ * - POST /api/auth/request-code { phone: "+7XXXXXXXXXX" | "8XXXXXXXXXX" | "7XXXXXXXXXX" }
  *   -> { ok: true, masked?: string, ttlSeconds?: number } OR { ok: false, message }
- * - POST /api/auth/verify-code { telegram, code }
- *   -> { ok: true, token, user? } OR { ok: false, message, retryAfterSeconds? }
+ * - POST /api/auth/verify-code { phone, code }
+ *   -> { ok: true, token } OR { ok: false, message, retryAfterSeconds? }
  */
 
 // Base URL для API бэкенда (измени на свой домен)
 const API_BASE_URL = import.meta.env.VITE_API_URL || "https://api.get-aist.ru";
 
-function normalizeTelegram(input) {
-  const raw = String(input ?? "").trim();
-  if (!raw) return "";
-  const noSpaces = raw.replace(/\s+/g, "");
-  return noSpaces.startsWith("@") ? noSpaces : `@${noSpaces}`;
+function normalizePhone(input) {
+  if (!input) return "";
+  const digitsOnly = String(input).replace(/\D/g, "");
+  
+  if (digitsOnly.length === 11 && digitsOnly.startsWith("7")) {
+    return "+" + digitsOnly;
+  } else if (digitsOnly.length === 10) {
+    return "+7" + digitsOnly;
+  } else if (digitsOnly.length === 11 && digitsOnly.startsWith("8")) {
+    return "+7" + digitsOnly.substring(1);
+  }
+  return "";
 }
 
-function isLikelyTelegramHandle(value) {
-  // Telegram username rules are broader, but this is a practical UI check.
-  // Letters, digits, underscore; 5..32 chars (without @).
-  const v = String(value ?? "").trim();
-  const handle = v.startsWith("@") ? v.slice(1) : v;
-  return /^[A-Za-z0-9_]{5,32}$/.test(handle);
+function isValidPhone(value) {
+  const normalized = normalizePhone(value);
+  if (!normalized) return false;
+  // Проверяем формат +7XXXXXXXXXX (11 цифр после +7)
+  return /^\+7\d{10}$/.test(normalized);
+}
+
+function formatPhone(value) {
+  const normalized = normalizePhone(value);
+  if (!normalized) return value;
+  // Форматируем: +7 (XXX) XXX-XX-XX
+  return normalized.replace(/^(\+7)(\d{3})(\d{3})(\d{2})(\d{2})$/, "$1 ($2) $3-$4-$5");
 }
 
 function digitsOnly(value) {
@@ -63,8 +77,8 @@ async function postJson(url, body, { signal } = {}) {
 
 export default function Register() {
   const [step, setStep] = useState("request"); // "request" | "verify"
-  const [telegramInput, setTelegramInput] = useState("");
-  const [telegram, setTelegram] = useState("");
+  const [phoneInput, setPhoneInput] = useState("");
+  const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -79,8 +93,8 @@ export default function Register() {
   const canRequest = useMemo(() => {
     if (busy) return false;
     if (cooldown > 0) return false;
-    return isLikelyTelegramHandle(telegramInput);
-  }, [busy, cooldown, telegramInput]);
+    return isValidPhone(phoneInput);
+  }, [busy, cooldown, phoneInput]);
 
   const canVerify = useMemo(() => {
     if (busy) return false;
@@ -119,9 +133,9 @@ export default function Register() {
 
   async function requestCode() {
     setMessage("");
-    const normalized = normalizeTelegram(telegramInput);
-    if (!isLikelyTelegramHandle(normalized)) {
-      setMessage("Введите корректный Telegram-ник (например, @aist_user).");
+    const normalized = normalizePhone(phoneInput);
+    if (!isValidPhone(normalized)) {
+      setMessage("Введите корректный номер телефона (например, +7 999 123-45-67 или 8 999 123-45-67).");
       return;
     }
 
@@ -133,7 +147,7 @@ export default function Register() {
     try {
       const data = await postJson(
         `${API_BASE_URL}/api/auth/request-code`,
-        { telegram: normalized },
+        { phone: normalized },
         { signal: controller.signal }
       );
 
@@ -147,17 +161,17 @@ export default function Register() {
         return;
       }
 
-      setTelegram(normalized);
+      setPhone(normalized);
       setMaskedDestination(data?.masked || "");
-      setTtlSeconds(typeof data?.ttlSeconds === "number" ? data.ttlSeconds : null);
-      setRemaining(typeof data?.ttlSeconds === "number" ? data.ttlSeconds : null);
+      setTtlSeconds(typeof data?.ttlSeconds === "number" ? data.ttlSeconds : 300);
+      setRemaining(typeof data?.ttlSeconds === "number" ? data.ttlSeconds : 300);
       setCooldown(15);
       setCode("");
       setStep("verify");
       setMessage(
         data?.masked
-          ? `Код отправлен в Telegram (${data.masked}).`
-          : "Код отправлен в Telegram-бот. Введите его здесь."
+          ? `Код отправлен в Telegram на номер ${data.masked}.`
+          : "Код отправлен в Telegram-бот @AIST_SMS_BOT. Введите его здесь."
       );
     } catch (err) {
       if (err?.name === "AbortError") return;
@@ -169,11 +183,11 @@ export default function Register() {
 
   async function verifyCode() {
     setMessage("");
-    const normalizedTelegram = normalizeTelegram(telegram);
+    const normalizedPhone = normalizePhone(phone);
     const d = digitsOnly(code);
-    if (!normalizedTelegram) {
+    if (!normalizedPhone) {
       setStep("request");
-      setMessage("Сначала укажите Telegram-ник и запросите код.");
+      setMessage("Сначала укажите номер телефона и запросите код.");
       return;
     }
     if (d.length < 4 || d.length > 8) {
@@ -189,7 +203,7 @@ export default function Register() {
     try {
       const data = await postJson(
         `${API_BASE_URL}/api/auth/verify-code`,
-        { telegram: normalizedTelegram, code: d },
+        { phone: normalizedPhone, code: d },
         { signal: controller.signal }
       );
 
@@ -376,7 +390,7 @@ export default function Register() {
           <div style={glassStyle.titleWrap}>
             <h1 style={glassStyle.title}>AIST</h1>
             <p style={glassStyle.subtitle}>
-              Вход по коду из Telegram-бота (Liquid Glass UI)
+              Вход по коду из Telegram-бота @AIST_SMS_BOT
             </p>
           </div>
         </div>
@@ -387,24 +401,21 @@ export default function Register() {
           <>
             <div style={glassStyle.field}>
               <div style={glassStyle.label}>
-                <span>Telegram-ник</span>
-                <span style={glassStyle.helper}>например, @aist_user</span>
+                <span>Номер телефона</span>
+                <span style={glassStyle.helper}>например, +7 999 123-45-67</span>
               </div>
               <div style={glassStyle.inputRow}>
                 <input
                   style={glassStyle.input}
-                  inputMode="text"
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  autoComplete="username"
-                  spellCheck={false}
-                  placeholder="@username"
-                  value={telegramInput}
-                  onChange={(e) => setTelegramInput(e.target.value)}
+                  inputMode="tel"
+                  autoComplete="tel"
+                  placeholder="+7 999 123-45-67"
+                  value={phoneInput}
+                  onChange={(e) => setPhoneInput(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") requestCode();
                   }}
-                  aria-label="Telegram ник"
+                  aria-label="Номер телефона"
                 />
               </div>
             </div>
@@ -424,8 +435,11 @@ export default function Register() {
             </div>
 
             <div style={glassStyle.hintBox}>
-              Откройте Telegram и найдите бота AIST. Код придёт туда. Если бот ещё не
-              активирован — нажмите <b>/start</b> и попробуйте снова.
+              <b>Важно:</b> Сначала активируйте бота <b>@AIST_SMS_BOT</b> в Telegram:
+              <br />1. Найдите бота <b>@AIST_SMS_BOT</b>
+              <br />2. Нажмите <b>/start</b>
+              <br />3. Отправьте номер телефона через кнопку
+              <br />4. После этого введите номер здесь и запросите код
             </div>
           </>
         )}
@@ -435,7 +449,7 @@ export default function Register() {
             <div style={glassStyle.field}>
               <div style={glassStyle.label}>
                 <span>Код из Telegram</span>
-                <span style={glassStyle.helper}>для {telegram}</span>
+                <span style={glassStyle.helper}>для {formatPhone(phone)}</span>
               </div>
               <input
                 ref={codeInputRef}
@@ -469,7 +483,7 @@ export default function Register() {
                 type="button"
                 onClick={() => {
                   setStep("request");
-                  setTelegramInput(telegram);
+                  setPhoneInput(phone);
                   setMessage("");
                 }}
                 disabled={busy}
@@ -478,7 +492,7 @@ export default function Register() {
                   ...(busy ? glassStyle.disabled : null),
                 }}
               >
-                Изменить ник
+                Изменить номер
               </button>
 
               <button
@@ -499,13 +513,13 @@ export default function Register() {
               <span style={glassStyle.pill}>
                 {maskedDestination
                   ? `Доставка: ${maskedDestination}`
-                  : "Доставка: Telegram-бот"}
+                  : "Доставка: @AIST_SMS_BOT"}
               </span>
               <span style={glassStyle.pill}>
                 {remaining == null
                   ? ttlSeconds
                     ? `Срок: ~${ttlSeconds}с`
-                    : "Срок: зависит от сервера"
+                    : "Срок: 5 минут"
                   : remaining > 0
                     ? `Истекает через: ${remaining}с`
                     : "Код истёк — запросите новый"}

@@ -4,16 +4,10 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
  * AIST PWA Messenger — Register/Login screen
  * Auth flow: user requests a one-time code delivered via Telegram bot, then verifies it.
  * Авторизация по номеру телефона (подтверждённому через бота @AIST_SMS_BOT)
- *
- * Backend endpoints:
- * - POST /api/auth/request-code { phone: "+7XXXXXXXXXX" | "8XXXXXXXXXX" | "7XXXXXXXXXX" }
- *   -> { ok: true, masked?: string, ttlSeconds?: number } OR { ok: false, message }
- * - POST /api/auth/verify-code { phone, code }
- *   -> { ok: true, token } OR { ok: false, message, retryAfterSeconds? }
  */
 
-// Base URL для API бэкенда (измени на свой домен)
-const API_BASE_URL = import.meta.env.VITE_API_URL || "https://api.get-aist.ru";
+// Base URL для API бэкенда
+const API_BASE_URL = process.env.REACT_APP_API_URL || "https://api.get-aist.ru";
 
 function normalizePhone(input) {
   if (!input) return "";
@@ -32,14 +26,12 @@ function normalizePhone(input) {
 function isValidPhone(value) {
   const normalized = normalizePhone(value);
   if (!normalized) return false;
-  // Проверяем формат +7XXXXXXXXXX (11 цифр после +7)
   return /^\+7\d{10}$/.test(normalized);
 }
 
 function formatPhone(value) {
   const normalized = normalizePhone(value);
   if (!normalized) return value;
-  // Форматируем: +7 (XXX) XXX-XX-XX
   return normalized.replace(/^(\+7)(\d{3})(\d{3})(\d{2})(\d{2})$/, "$1 ($2) $3-$4-$5");
 }
 
@@ -76,7 +68,7 @@ async function postJson(url, body, { signal } = {}) {
 }
 
 export default function Register() {
-  const [step, setStep] = useState("request"); // "request" | "verify"
+  const [step, setStep] = useState("request");
   const [phoneInput, setPhoneInput] = useState("");
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
@@ -99,18 +91,16 @@ export default function Register() {
   const canVerify = useMemo(() => {
     if (busy) return false;
     const d = digitsOnly(code);
-    return d.length >= 4 && d.length <= 8; // allow 4-8 digit OTP
+    return d.length >= 4 && d.length <= 8;
   }, [busy, code]);
 
   useEffect(() => {
-    // cleanup fetch abort on unmount
     return () => {
       if (abortRef.current) abortRef.current.abort();
     };
   }, []);
 
   useEffect(() => {
-    // countdown for code TTL
     if (remaining == null) return;
     if (remaining <= 0) return;
     const t = setInterval(() => setRemaining((r) => (r == null ? r : r - 1)), 1000);
@@ -118,14 +108,12 @@ export default function Register() {
   }, [remaining]);
 
   useEffect(() => {
-    // cooldown for resend
     if (cooldown <= 0) return;
     const t = setInterval(() => setCooldown((c) => (c <= 0 ? 0 : c - 1)), 1000);
     return () => clearInterval(t);
   }, [cooldown]);
 
   useEffect(() => {
-    // focus code field when switching to verify step
     if (step !== "verify") return;
     const t = setTimeout(() => codeInputRef.current?.focus?.(), 50);
     return () => clearTimeout(t);
@@ -154,7 +142,6 @@ export default function Register() {
       if (data?.ok === false) {
         const errorMsg = data?.message || "Не удалось отправить код. Попробуйте ещё раз.";
         setMessage(errorMsg);
-        // Если пользователь не найден, предлагаем активировать бота
         if (errorMsg.includes("не найден") || errorMsg.includes("активируйте")) {
           setMessage(errorMsg + " После активации попробуйте снова.");
         }
@@ -224,8 +211,7 @@ export default function Register() {
         localStorage.setItem("aist_token", token);
       }
 
-      // If your app uses a router, replace this with navigate("/").
-      window.location.assign("/");
+      window.location.assign("/messenger");
     } catch (err) {
       if (err?.name === "AbortError") return;
       setMessage(err?.message || "Ошибка сети при проверке кода.");
@@ -243,15 +229,20 @@ export default function Register() {
     () => ({
       page: {
         minHeight: "100vh",
+        height: "100vh",
+        width: "100vw",
         display: "grid",
         placeItems: "center",
-        padding: "24px",
+        padding: "0",
+        margin: "0",
         color: "rgba(255,255,255,.92)",
         background:
           "radial-gradient(1200px 800px at 20% 10%, rgba(120, 205, 255, .35), transparent 55%)," +
           "radial-gradient(900px 700px at 85% 20%, rgba(200, 120, 255, .30), transparent 55%)," +
           "radial-gradient(900px 700px at 30% 90%, rgba(90, 255, 200, .22), transparent 55%)," +
           "linear-gradient(135deg, #070A12 0%, #090B18 40%, #09091A 100%)",
+        backgroundAttachment: "fixed",
+        overflow: "auto",
       },
       card: {
         width: "min(460px, 92vw)",
@@ -380,7 +371,7 @@ export default function Register() {
 
   return (
     <div style={glassStyle.page}>
-      <div style={glassStyle.card} role="region" aria-label="AIST вход">
+      <div style={{ ...glassStyle.card, margin: "20px" }} role="region" aria-label="AIST вход">
         <div style={glassStyle.shine} />
 
         <div style={glassStyle.header}>
@@ -537,4 +528,3 @@ export default function Register() {
     </div>
   );
 }
-

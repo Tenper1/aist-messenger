@@ -3,27 +3,23 @@ import { QRCodeSVG } from 'qrcode.react';
 import { useTheme } from '../context/ThemeContext';
 import { useUser } from '../context/UserContext';
 import { requestNotificationPermission } from '../lib/notifications';
+import { IconBack, IconChevronRight, IconCamera } from './Icons';
+
+const SECTIONS = [
+  { id: 'notifications', title: 'Уведомления' },
+  { id: 'privacy', title: 'Конфиденциальность' },
+  { id: 'appearance', title: 'Внешний вид' },
+  { id: 'qr', title: 'QR-код' },
+];
 
 export default function Settings() {
   const { theme, themeId, setThemeId, themeList } = useTheme();
-  const {
-    displayName,
-    username,
-    usernameFormatted,
-    usernameError,
-    setDisplayName,
-    setUsername,
-  } = useUser();
-  const [notifications, setNotifications] = useState(() => {
-    try {
-      return localStorage.getItem('aist_notifications') !== 'false';
-    } catch {
-      return true;
-    }
-  });
-  const [privacyWhoCanWrite, setPrivacyWhoCanWrite] = useState('everyone'); // everyone | contacts | nobody
-  const [privacyWhoCanSeeStatus, setPrivacyWhoCanSeeStatus] = useState('everyone');
-  const [privacyWhoCanSeeStories, setPrivacyWhoCanSeeStories] = useState('contacts');
+  const { displayName, username, usernameFormatted, usernameError, setDisplayName, setUsername, setProfilePhoto, profilePhoto } = useUser();
+  const [view, setView] = useState('main');
+  const [notifications, setNotifications] = useState(() => localStorage.getItem('aist_notifications') !== 'false');
+  const [privacyWrite, setPrivacyWrite] = useState('everyone');
+  const [privacyStatus, setPrivacyStatus] = useState('everyone');
+  const [privacyStories, setPrivacyStories] = useState('contacts');
 
   const saveNotifications = async (v) => {
     if (v) {
@@ -31,242 +27,122 @@ export default function Settings() {
       if (perm !== 'granted') v = false;
     }
     setNotifications(v);
-    try {
-      localStorage.setItem('aist_notifications', v ? 'true' : 'false');
-    } catch {}
+    try { localStorage.setItem('aist_notifications', v ? 'true' : 'false'); } catch {}
   };
 
-  const styles = useMemo(
-    () => ({
-      container: {
-        padding: '24px 20px',
-        height: '100%',
-        overflowY: 'auto',
-        maxWidth: 560,
-        margin: '0 auto',
-        color: theme.text,
-      },
-      title: { fontSize: 22, fontWeight: 700, marginBottom: 24, color: theme.text },
-      section: { marginBottom: 28 },
-      sectionTitle: { fontSize: 16, fontWeight: 600, marginBottom: 12, color: theme.text },
-      settingItem: {
-        padding: 14,
-        borderRadius: 14,
-        background: theme.sidebarBg || 'rgba(255,255,255,.06)',
-        border: `1px solid ${theme.border}`,
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 10,
-      },
-      settingLabel: { fontSize: 14, color: theme.text },
-      input: {
-        padding: '10px 12px',
-        borderRadius: 12,
-        border: `1px solid ${theme.inputBorder}`,
-        background: theme.inputBg,
-        color: theme.text,
-        fontSize: 14,
-        width: '100%',
-        maxWidth: 220,
-        outline: 'none',
-      },
-      inputError: { borderColor: 'rgba(239, 68, 68, .6)' },
-      errorText: { fontSize: 12, color: 'rgba(239, 68, 68, .9)', marginTop: 4 },
-      select: {
-        padding: '8px 12px',
-        borderRadius: 10,
-        border: `1px solid ${theme.border}`,
-        background: theme.inputBg,
-        color: theme.text,
-        fontSize: 13,
-        cursor: 'pointer',
-        outline: 'none',
-      },
-      toggle: {
-        width: 48,
-        height: 28,
-        borderRadius: 14,
-        background: notifications ? 'rgba(100, 180, 255, .5)' : theme.inputBg,
-        border: `1px solid ${theme.border}`,
-        position: 'relative',
-        cursor: 'pointer',
-        transition: 'all 0.2s ease',
-      },
-      toggleThumb: {
-        width: 22,
-        height: 22,
-        borderRadius: '50%',
-        background: '#fff',
-        position: 'absolute',
-        top: 2,
-        left: notifications ? 24 : 2,
-        transition: 'left 0.2s ease',
-        boxShadow: '0 1px 3px rgba(0,0,0,.2)',
-      },
-      logoutButton: {
-        padding: '12px 24px',
-        borderRadius: 12,
-        background: 'rgba(239, 68, 68, .2)',
-        border: '1px solid rgba(239, 68, 68, .35)',
-        color: theme.text,
-        fontSize: 14,
-        fontWeight: 600,
-        cursor: 'pointer',
-        marginTop: 24,
-      },
-      row: { display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 },
-      label: { fontSize: 13, color: theme.textMuted },
-      themeRow: { display: 'flex', gap: 8, flexWrap: 'wrap' },
-      themeBtn: {
-        padding: '8px 14px',
-        borderRadius: 10,
-        border: `1px solid ${theme.border}`,
-        background: theme.sidebarBg || 'transparent',
-        color: theme.text,
-        fontSize: 13,
-        cursor: 'pointer',
-      },
-      themeBtnActive: { background: theme.accent, color: theme.accentText, borderColor: 'transparent' },
-    }),
-    [theme, notifications]
-  );
-
-  const handleLogout = () => {
-    localStorage.removeItem('aist_token');
-    window.location.assign('/');
+  const onPhotoChange = (e) => {
+    const f = e.target.files?.[0];
+    if (!f?.type.startsWith('image/')) return;
+    const r = new FileReader();
+    r.onload = () => setProfilePhoto(r.result);
+    r.readAsDataURL(f);
   };
 
-  return (
-    <div style={styles.container}>
-      <h2 style={styles.title}>Настройки</h2>
+  const base = {
+    container: { height: '100%', overflowY: 'auto', background: theme.pageBg, color: theme.text },
+    header: { height: 56, padding: '0 8px', display: 'flex', alignItems: 'center', gap: 8, borderBottom: `1px solid ${theme.border}`, background: theme.headerBg },
+    backBtn: { border: 'none', background: 'transparent', color: theme.accent, padding: 8, cursor: 'pointer' },
+    headerTitle: { flex: 1, fontSize: 17, fontWeight: 600 },
+    profileCard: { padding: 24, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, borderBottom: `1px solid ${theme.border}` },
+    avatarWrap: { width: 100, height: 100, borderRadius: '50%', overflow: 'hidden', background: theme.sidebarBg, position: 'relative', cursor: 'pointer' },
+    avatarImg: { width: '100%', height: '100%', objectFit: 'cover' },
+    avatarPlaceholder: { width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.textMuted },
+    nameInput: { padding: '10px 14px', borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.inputBg, color: theme.text, fontSize: 16, width: '100%', maxWidth: 280, outline: 'none', textAlign: 'center' },
+    usernameInput: { padding: '10px 14px', borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.inputBg, color: theme.text, fontSize: 15, width: '100%', maxWidth: 280, outline: 'none', textAlign: 'center' },
+    row: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: `1px solid ${theme.border}`, background: theme.cardBg, cursor: 'pointer' },
+    rowLabel: { fontSize: 16, color: theme.text },
+    rowSub: { fontSize: 14, color: theme.textMuted, marginTop: 2 },
+    toggle: { width: 50, height: 28, borderRadius: 14, background: notifications ? theme.accent : theme.sidebarBg, position: 'relative', cursor: 'pointer', flexShrink: 0 },
+    toggleThumb: { width: 24, height: 24, borderRadius: '50%', background: '#fff', position: 'absolute', top: 2, left: notifications ? 24 : 2, transition: 'left 0.15s', boxShadow: '0 1px 3px rgba(0,0,0,.2)' },
+    sectionTitle: { padding: '12px 16px', fontSize: 14, color: theme.textMuted, textTransform: 'uppercase' },
+    logoutRow: { padding: 14, borderBottom: `1px solid ${theme.border}`, background: theme.cardBg, cursor: 'pointer' },
+    logoutText: { fontSize: 16, color: '#e53935', fontWeight: 500 },
+  };
 
-      <div style={styles.section}>
-        <h3 style={styles.sectionTitle}>Профиль</h3>
-        <div style={styles.row}>
-          <label style={styles.label}>Имя (отображаемое)</label>
-          <input
-            type="text"
-            style={styles.input}
-            placeholder="Как к вам обращаться"
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-            maxLength={64}
-          />
-        </div>
-        <div style={styles.row}>
-          <label style={styles.label}>Никнейм — только для поиска (в имени не отображается)</label>
-          <input
-            type="text"
-            style={{ ...styles.input, ...(usernameError ? styles.inputError : {}) }}
-            placeholder="@ник для поиска"
-            value={username ? `@${username}` : ''}
-            onChange={(e) => setUsername(e.target.value)}
-            maxLength={33}
-          />
-          {usernameError && <span style={styles.errorText}>{usernameError}</span>}
-          {username && !usernameError && (
-            <span style={{ ...styles.label, marginTop: 4 }}>Поиск по нику: {usernameFormatted}</span>
-          )}
-        </div>
-      </div>
-
-      <div style={styles.section}>
-        <h3 style={styles.sectionTitle}>Внешний вид</h3>
-        <div style={styles.settingItem}>
-          <span style={styles.settingLabel}>Тема оформления</span>
-          <div style={styles.themeRow}>
+  if (view !== 'main') {
+    return (
+      <div style={base.container}>
+        <header style={base.header}>
+          <button type="button" style={base.backBtn} onClick={() => setView('main')}><IconBack width={24} height={24} /></button>
+          <span style={base.headerTitle}>{SECTIONS.find((s) => s.id === view)?.title || view}</span>
+        </header>
+        {view === 'notifications' && (
+          <div style={{ padding: 16 }}>
+            <div style={base.row}>
+              <span style={base.rowLabel}>Уведомления</span>
+              <div style={base.toggle} onClick={() => saveNotifications(!notifications)}><div style={base.toggleThumb} /></div>
+            </div>
+          </div>
+        )}
+        {view === 'privacy' && (
+          <div style={{ padding: 16 }}>
+            <div style={base.row}>
+              <div><div style={base.rowLabel}>Кто может писать</div><div style={base.rowSub}>{privacyWrite === 'everyone' ? 'Все' : privacyWrite === 'contacts' ? 'Контакты' : 'Никто'}</div></div>
+              <select value={privacyWrite} onChange={(e) => setPrivacyWrite(e.target.value)} style={{ border: 'none', background: 'transparent', color: theme.accent, fontSize: 15, cursor: 'pointer' }}>
+                <option value="everyone">Все</option><option value="contacts">Контакты</option><option value="nobody">Никто</option>
+              </select>
+            </div>
+            <div style={base.row}>
+              <div><div style={base.rowLabel}>Кто видит статус</div></div>
+              <select value={privacyStatus} onChange={(e) => setPrivacyStatus(e.target.value)} style={{ border: 'none', background: 'transparent', color: theme.accent, fontSize: 15, cursor: 'pointer' }}>
+                <option value="everyone">Все</option><option value="contacts">Контакты</option><option value="nobody">Никто</option>
+              </select>
+            </div>
+            <div style={base.row}>
+              <div><div style={base.rowLabel}>Кто видит истории</div></div>
+              <select value={privacyStories} onChange={(e) => setPrivacyStories(e.target.value)} style={{ border: 'none', background: 'transparent', color: theme.accent, fontSize: 15, cursor: 'pointer' }}>
+                <option value="everyone">Все</option><option value="contacts">Контакты</option><option value="nobody">Никто</option>
+              </select>
+            </div>
+          </div>
+        )}
+        {view === 'appearance' && (
+          <div style={{ padding: 16 }}>
+            <div style={base.sectionTitle}>Тема</div>
             {themeList.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                style={{
-                  ...styles.themeBtn,
-                  ...(themeId === t.id ? styles.themeBtnActive : {}),
-                }}
-                onClick={() => setThemeId(t.id)}
-              >
-                {t.label}
-              </button>
+              <div key={t.id} style={base.row} onClick={() => setThemeId(t.id)}>
+                <span style={base.rowLabel}>{t.label}</span>
+                {themeId === t.id && <span style={{ color: theme.accent, fontSize: 14 }}>✓</span>}
+              </div>
             ))}
           </div>
-        </div>
-      </div>
-
-      <div style={styles.section}>
-        <h3 style={styles.sectionTitle}>Конфиденциальность</h3>
-        <div style={styles.settingItem}>
-          <span style={styles.settingLabel}>Кто может писать вам</span>
-          <select
-            style={styles.select}
-            value={privacyWhoCanWrite}
-            onChange={(e) => setPrivacyWhoCanWrite(e.target.value)}
-          >
-            <option value="everyone">Все</option>
-            <option value="contacts">Только контакты</option>
-            <option value="nobody">Никто</option>
-          </select>
-        </div>
-        <div style={styles.settingItem}>
-          <span style={styles.settingLabel}>Кто видит статус</span>
-          <select
-            style={styles.select}
-            value={privacyWhoCanSeeStatus}
-            onChange={(e) => setPrivacyWhoCanSeeStatus(e.target.value)}
-          >
-            <option value="everyone">Все</option>
-            <option value="contacts">Только контакты</option>
-            <option value="nobody">Никто</option>
-          </select>
-        </div>
-        <div style={styles.settingItem}>
-          <span style={styles.settingLabel}>Кто видит истории</span>
-          <select
-            style={styles.select}
-            value={privacyWhoCanSeeStories}
-            onChange={(e) => setPrivacyWhoCanSeeStories(e.target.value)}
-          >
-            <option value="everyone">Все</option>
-            <option value="contacts">Только контакты</option>
-            <option value="nobody">Никто</option>
-          </select>
-        </div>
-      </div>
-
-      <div style={styles.section}>
-        <h3 style={styles.sectionTitle}>QR-код</h3>
-        <div style={{ ...styles.settingItem, flexDirection: 'column', alignItems: 'flex-start', gap: 12 }}>
-          <span style={styles.settingLabel}>Мой QR — добавление в контакты</span>
-          <div style={{ padding: 16, background: '#fff', borderRadius: 12 }}>
-            <QRCodeSVG
-              value={username ? `https://get-aist.ru/add/${username}` : `https://get-aist.ru/me`}
-              size={160}
-              level="M"
-            />
+        )}
+        {view === 'qr' && (
+          <div style={{ padding: 16, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <div style={base.rowLabel}>Мой QR для контактов</div>
+            <div style={{ padding: 16, background: '#fff', borderRadius: 12, marginTop: 12 }}>
+              <QRCodeSVG value={username ? `https://get-aist.ru/add/${username}` : 'https://get-aist.ru/me'} size={200} level="M" />
+            </div>
           </div>
-          <span style={{ ...styles.label, fontSize: 12 }}>Покажите этот код, чтобы вас добавили по нику</span>
-        </div>
-        <div style={{ ...styles.settingItem, flexDirection: 'column', alignItems: 'flex-start', marginTop: 12 }}>
-          <span style={styles.settingLabel}>Войти на другом устройстве по QR</span>
-          <span style={{ ...styles.label, marginTop: 4 }}>Откройте приложение на другом устройстве и отсканируйте QR в разделе «Вход по QR».</span>
-        </div>
+        )}
       </div>
+    );
+  }
 
-      <div style={styles.section}>
-        <h3 style={styles.sectionTitle}>Уведомления</h3>
-        <div style={styles.settingItem}>
-          <span style={styles.settingLabel}>Включить уведомления (PWA)</span>
-          <div style={styles.toggle} onClick={() => saveNotifications(!notifications)}>
-            <div style={styles.toggleThumb} />
-          </div>
-        </div>
+  return (
+    <div style={base.container}>
+      <header style={base.header}>
+        <span style={base.headerTitle}>Настройки</span>
+      </header>
+      <div style={base.profileCard}>
+        <label style={base.avatarWrap}>
+          <input type="file" accept="image/*" style={{ display: 'none' }} onChange={onPhotoChange} />
+          {profilePhoto ? <img src={profilePhoto} alt="" style={base.avatarImg} /> : <div style={base.avatarPlaceholder}><IconCamera width={40} height={40} /></div>}
+        </label>
+        <input type="text" style={base.nameInput} placeholder="Имя" value={displayName} onChange={(e) => setDisplayName(e.target.value)} maxLength={64} />
+        <input type="text" style={{ ...base.usernameInput, ...(usernameError ? { borderColor: '#e53935' } : {}) }} placeholder="Ник для поиска (@ник)" value={username ? `@${username}` : ''} onChange={(e) => setUsername(e.target.value)} maxLength={33} />
+        {usernameError && <span style={{ fontSize: 12, color: '#e53935' }}>{usernameError}</span>}
       </div>
-
-      <div style={styles.section}>
-        <h3 style={styles.sectionTitle}>Аккаунт</h3>
-        <button style={styles.logoutButton} onClick={handleLogout}>
-          Выйти
-        </button>
+      <div style={base.sectionTitle}>Настройки</div>
+      {SECTIONS.map((s) => (
+        <div key={s.id} style={base.row} onClick={() => setView(s.id)}>
+          <span style={base.rowLabel}>{s.title}</span>
+          <IconChevronRight width={20} height={20} style={{ color: theme.textMuted }} />
+        </div>
+      ))}
+      <div style={base.sectionTitle}>Аккаунт</div>
+      <div style={base.logoutRow} onClick={() => { localStorage.removeItem('aist_token'); window.location.assign('/'); }}>
+        <span style={base.logoutText}>Выйти</span>
       </div>
     </div>
   );

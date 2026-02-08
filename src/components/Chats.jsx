@@ -1,8 +1,9 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import { useUser } from '../context/UserContext';
-import { IconBack, IconSearch } from './Icons';
-import ChannelCreateModal from './ChannelCreateModal';
+import { IconBack, IconSearch, IconPen, IconChannel, IconChevronRight, IconPhone, IconVideo, IconAttach } from './Icons';
+import CallScreen from './CallScreen';
 import {
   getChatList,
   getMessages,
@@ -11,153 +12,114 @@ import {
   createChat,
 } from '../lib/chatStorage';
 
+const accent = '#0088cc';
+
 function ChatView({ chat, onBack }) {
   const { theme } = useTheme();
   const { displayName } = useUser();
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
+  const [attachPreview, setAttachPreview] = useState(null);
+  const [callMode, setCallMode] = useState(null);
   const isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches;
 
   useEffect(() => {
     setMessages(getMessages(chat.id));
   }, [chat.id]);
 
-  const sendMessage = useCallback(() => {
-    const text = inputValue.trim();
-    if (!text) return;
+  const sendMessage = useCallback((textOrAttachment) => {
+    const isAttach = typeof textOrAttachment === 'object';
+    const text = isAttach ? textOrAttachment.caption || '' : (textOrAttachment || '').trim();
+    const attachment = isAttach ? textOrAttachment : null;
+    if (!text && !attachment) return;
     const msg = {
       fromMe: true,
-      text,
+      text: text || (attachment ? (attachment.type === 'image' ? 'Фото' : 'Видео') : ''),
       time: new Date().toISOString(),
       senderName: displayName || 'Вы',
+      attachment: attachment ? { type: attachment.type, url: attachment.url } : undefined,
     };
     const next = appendMessage(chat.id, msg);
     setMessages(next);
     setInputValue('');
-    addOrUpdateChat({
-      ...chat,
-      lastMessage: text,
-      lastTime: Date.now(),
-    });
-  }, [inputValue, chat, displayName]);
+    setAttachPreview(null);
+    addOrUpdateChat({ ...chat, lastMessage: text || 'Медиа', lastTime: Date.now() });
+  }, [chat, displayName]);
 
-  const styles = useMemo(
-    () => ({
-      header: {
-        height: 56,
-        padding: '0 16px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 12,
-        borderBottom: `1px solid ${theme.border}`,
-        background: theme.headerBg,
-      },
-      backBtn: {
-        border: 'none',
-        background: 'transparent',
-        color: theme.text,
-        fontSize: 22,
-        cursor: 'pointer',
-        padding: '4px 8px',
-        display: isMobile ? 'block' : 'none',
-      },
-      messages: {
-        flex: 1,
-        overflowY: 'auto',
-        padding: 16,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 12,
-      },
-      bubble: {
-        maxWidth: '80%',
-        padding: '10px 14px',
-        borderRadius: 16,
-        fontSize: 14,
-        lineHeight: 1.4,
-        alignSelf: 'flex-start',
-        background: theme.sidebarBg || 'rgba(255,255,255,.1)',
-        border: `1px solid ${theme.border}`,
-        color: theme.text,
-      },
-      bubbleMe: {
-        alignSelf: 'flex-end',
-        background: theme.accent,
-        color: theme.accentText,
-        border: '1px solid rgba(255,255,255,.2)',
-      },
-      time: { fontSize: 11, color: theme.textMuted, marginTop: 4 },
-      inputRow: {
-        padding: 12,
-        borderTop: `1px solid ${theme.border}`,
-        background: theme.headerBg,
-        display: 'flex',
-        gap: 10,
-        alignItems: 'center',
-      },
-      input: {
-        flex: 1,
-        padding: '12px 16px',
-        borderRadius: 20,
-        border: `1px solid ${theme.inputBorder}`,
-        background: theme.inputBg,
-        color: theme.text,
-        fontSize: 14,
-        outline: 'none',
-      },
-      sendBtn: {
-        padding: '12px 20px',
-        borderRadius: 20,
-        border: 'none',
-        background: theme.accent,
-        color: theme.accentText,
-        fontWeight: 600,
-        cursor: 'pointer',
-        fontSize: 14,
-      },
-    }),
-    [theme, isMobile]
-  );
+  const onAttach = (e) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    if (f.type.startsWith('image/')) {
+      const r = new FileReader();
+      r.onload = () => setAttachPreview({ type: 'image', url: r.result });
+      r.readAsDataURL(f);
+    } else if (f.type.startsWith('video/')) {
+      const r = new FileReader();
+      r.onload = () => setAttachPreview({ type: 'video', url: r.result });
+      r.readAsDataURL(f);
+    }
+  };
+
+  const bubbleIn = theme.bubbleIn || theme.sidebarBg;
+  const bubbleOut = theme.bubbleOut || theme.accent;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <header style={styles.header}>
-        <button type="button" style={styles.backBtn} onClick={onBack} aria-label="Назад к списку">
-          <IconBack width={22} height={22} />
+      <header style={{ height: 56, padding: '0 8px', display: 'flex', alignItems: 'center', gap: 8, borderBottom: `1px solid ${theme.border}`, background: theme.headerBg }}>
+        <button type="button" style={{ border: 'none', background: 'transparent', color: theme.accent, padding: 8, cursor: 'pointer', display: isMobile ? 'block' : 'none' }} onClick={onBack}>
+          <IconBack width={24} height={24} />
         </button>
-        <span style={{ fontWeight: 600, color: theme.text }}>{chat.name}</span>
+        <span style={{ flex: 1, fontWeight: 600, fontSize: 16 }}>{chat.name}</span>
+        <button type="button" style={{ border: 'none', background: 'transparent', padding: 8, color: theme.text, cursor: 'pointer' }} aria-label="Голосовой звонок" onClick={() => setCallMode('voice')}><IconPhone width={22} height={22} /></button>
+        <button type="button" style={{ border: 'none', background: 'transparent', padding: 8, color: theme.text, cursor: 'pointer' }} aria-label="Видеозвонок" onClick={() => setCallMode('video')}><IconVideo width={22} height={22} /></button>
       </header>
-      <div style={styles.messages}>
+      {callMode && (
+        <CallScreen peerName={chat.name} isVideo={callMode === 'video'} onEnd={() => setCallMode(null)} />
+      )}
+      <div style={{ flex: 1, overflowY: 'auto', padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
         {messages.length === 0 && (
-          <div style={{ color: theme.textMuted, fontSize: 14, textAlign: 'center', padding: 24 }}>
-            Нет сообщений. Напишите первым.
-          </div>
+          <div style={{ color: theme.textMuted, fontSize: 14, textAlign: 'center', padding: 24 }}>Нет сообщений</div>
         )}
         {messages.map((m) => (
-          <div
-            key={m.id}
-            style={{
-              ...styles.bubble,
-              ...(m.fromMe ? styles.bubbleMe : {}),
-            }}
-          >
-            <div>{m.text}</div>
-            <div style={styles.time}>
-              {new Date(m.time).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+          <div key={m.id} style={{ alignSelf: m.fromMe ? 'flex-end' : 'flex-start', maxWidth: '80%' }}>
+            {m.attachment?.url && (
+              <div style={{ marginBottom: 4, borderRadius: 12, overflow: 'hidden' }}>
+                {m.attachment.type === 'image' ? (
+                  <img src={m.attachment.url} alt="" style={{ maxWidth: 260, maxHeight: 260, display: 'block' }} />
+                ) : (
+                  <video src={m.attachment.url} controls style={{ maxWidth: 260, maxHeight: 200 }} />
+                )}
+              </div>
+            )}
+            <div style={{ padding: '8px 12px', borderRadius: 12, background: m.fromMe ? bubbleOut : bubbleIn, color: m.fromMe ? theme.accentText : theme.text, fontSize: 14 }}>
+              {m.text}
             </div>
+            <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 2 }}>{new Date(m.time).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</div>
           </div>
         ))}
       </div>
-      <div style={styles.inputRow}>
+      {attachPreview && (
+        <div style={{ padding: 8, borderTop: `1px solid ${theme.border}`, background: theme.headerBg }}>
+          <div style={{ position: 'relative', display: 'inline-block' }}>
+            {attachPreview.type === 'image' ? <img src={attachPreview.url} alt="" style={{ maxHeight: 120, borderRadius: 8 }} /> : <video src={attachPreview.url} style={{ maxHeight: 120, borderRadius: 8 }} />}
+            <button type="button" onClick={() => setAttachPreview(null)} style={{ position: 'absolute', top: 4, right: 4, border: 'none', background: 'rgba(0,0,0,.5)', color: '#fff', borderRadius: 4, padding: 4 }}>×</button>
+          </div>
+        </div>
+      )}
+      <div style={{ padding: 8, borderTop: `1px solid ${theme.border}`, background: theme.headerBg, display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+        <label style={{ cursor: 'pointer', color: theme.textMuted, padding: 8 }}>
+          <input type="file" accept="image/*,video/*" style={{ display: 'none' }} onChange={onAttach} />
+          <IconAttach width={24} height={24} />
+        </label>
         <input
-          style={styles.input}
+          style={{ flex: 1, padding: '10px 14px', borderRadius: 20, border: 'none', background: theme.inputBg, color: theme.text, fontSize: 15, outline: 'none' }}
           placeholder="Сообщение"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
+          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (attachPreview) sendMessage({ ...attachPreview, caption: inputValue }); else sendMessage(inputValue); } }}
         />
-        <button type="button" style={styles.sendBtn} onClick={sendMessage}>
-          Отправить
+        <button type="button" onClick={() => attachPreview ? sendMessage({ ...attachPreview, caption: inputValue }) : sendMessage(inputValue)} style={{ padding: '10px 20px', borderRadius: '50%', border: 'none', background: theme.accent, color: theme.accentText, cursor: 'pointer' }}>
+          ➤
         </button>
       </div>
     </div>
@@ -165,184 +127,129 @@ function ChatView({ chat, onBack }) {
 }
 
 export default function Chats() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const { theme } = useTheme();
-  const { usernameFormatted } = useUser();
   const [chatList, setChatList] = useState(getChatList);
   const [selectedChat, setSelectedChat] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [channelModalOpen, setChannelModalOpen] = useState(false);
+  const [newChatOpen, setNewChatOpen] = useState(false);
+
+  useEffect(() => {
+    const id = location.state?.openChatId;
+    if (id) {
+      const c = getChatList().find((ch) => ch.id === id);
+      if (c) setSelectedChat(c);
+      navigate('/messenger', { replace: true, state: {} });
+    }
+  }, [location.state?.openChatId, navigate]);
 
   const refreshList = useCallback(() => setChatList(getChatList()), []);
 
   const filteredChats = useMemo(() => {
     const q = searchQuery.trim().toLowerCase().replace(/^@/, '');
     if (!q) return chatList;
-    return chatList.filter(
-      (c) =>
-        (c.name && c.name.toLowerCase().includes(q)) ||
-        (c.username && c.username.toLowerCase().includes(q))
-    );
+    return chatList.filter((c) => (c.name && c.name.toLowerCase().includes(q)) || (c.username && c.username.toLowerCase().includes(q)));
   }, [chatList, searchQuery]);
 
-  const styles = useMemo(
-    () => ({
-      container: { display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 },
-      sidebar: {
-        width: '100%',
-        maxWidth: 360,
-        minWidth: 280,
-        borderRight: `1px solid ${theme.border}`,
-        background: theme.sidebarBg || 'transparent',
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden',
-      },
-      search: { padding: '12px 16px', borderBottom: `1px solid ${theme.border}` },
-      searchInput: {
-        width: '100%',
-        padding: '10px 14px 10px 36px',
-        borderRadius: 20,
-        border: `1px solid ${theme.inputBorder}`,
-        background: theme.inputBg,
-        color: theme.text,
-        fontSize: 14,
-        outline: 'none',
-      },
-      searchWrap: { position: 'relative' },
-      atIcon: {
-        position: 'absolute',
-        left: 14,
-        top: '50%',
-        transform: 'translateY(-50%)',
-        color: theme.textMuted,
-        fontSize: 14,
-        pointerEvents: 'none',
-      },
-      newChatRow: {
-        padding: '8px 16px',
-        display: 'flex',
-        gap: 8,
-        flexWrap: 'wrap',
-      },
-      newBtn: {
-        padding: '8px 14px',
-        borderRadius: 12,
-        border: `1px solid ${theme.border}`,
-        background: theme.sidebarBg || 'rgba(255,255,255,.06)',
-        color: theme.text,
-        fontSize: 13,
-        cursor: 'pointer',
-      },
-      chatList: { flex: 1, overflowY: 'auto', padding: '8px 0' },
-      chatItem: {
-        padding: '12px 16px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 12,
-        cursor: 'pointer',
-        borderLeft: '3px solid transparent',
-        transition: 'background 0.15s ease',
-      },
-      chatItemActive: {
-        background: theme.sidebarBg || 'rgba(255,255,255,.1)',
-        borderLeftColor: 'rgba(100, 180, 255, .8)',
-      },
-      avatar: {
-        width: 48,
-        height: 48,
-        borderRadius: '50%',
-        background: theme.accent,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: 22,
-        flexShrink: 0,
-      },
-      chatInfo: { flex: 1, minWidth: 0 },
-      chatName: { fontSize: 15, fontWeight: 600, color: theme.text, marginBottom: 2 },
-      lastMsg: { fontSize: 13, color: theme.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-      mainArea: {
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        minWidth: 0,
-        background: theme.cardBg || 'transparent',
-      },
-      empty: {
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: theme.textMuted,
-        padding: 40,
-        textAlign: 'center',
-      },
-    }),
-    [theme]
-  );
+  const createNewChat = (type) => {
+    if (type === 'channel') {
+      setNewChatOpen(false);
+      navigate('/messenger/new-channel');
+      return;
+    }
+    if (type === 'group') {
+      setNewChatOpen(false);
+      navigate('/messenger/new-group');
+      return;
+    }
+    const name = window.prompt('Введите ник @ или имя');
+    if (!name?.trim()) return;
+    const id = createChat({ name: name.trim(), type: 'user' });
+    refreshList();
+    setSelectedChat(getChatList().find((c) => c.id === id) || { id, name: name.trim(), type: 'user' });
+    setNewChatOpen(false);
+  };
 
   useEffect(() => {
     if (!selectedChat) refreshList();
   }, [selectedChat, refreshList]);
 
-  const createNewChat = (type) => {
-    if (type === 'channel') {
-      setChannelModalOpen(true);
-      return;
-    }
-    const name = window.prompt(type === 'user' ? 'Введите ник @ или имя' : 'Название группы');
-    if (!name || !name.trim()) return;
-    const id = createChat({
-      name: name.trim(),
-      type: type === 'user' ? 'user' : 'group',
-    });
-    refreshList();
-    setSelectedChat(getChatList().find((c) => c.id === id) || { id, name: name.trim(), type, avatar: type === 'group' ? 'group' : 'user' });
-  };
-
-  const onChannelCreated = (chatId) => {
-    refreshList();
-    const c = getChatList().find((ch) => ch.id === chatId);
-    if (c) setSelectedChat(c);
-  };
-
   const isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches;
   const showListOnly = isMobile && selectedChat;
 
-  return (
-    <div style={styles.container}>
-      {channelModalOpen && (
-        <ChannelCreateModal
-          onClose={() => setChannelModalOpen(false)}
-          onCreated={onChannelCreated}
-        />
-      )}
-      <div style={{ ...styles.sidebar, display: showListOnly ? 'none' : 'flex' }}>
-        <div style={styles.search}>
-          <div style={styles.searchWrap}>
-            <span style={styles.atIcon}><IconSearch width={16} height={16} /></span>
-            <input
-              type="text"
-              style={styles.searchInput}
-              placeholder="Поиск по нику @ или каналу"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
+  const s = {
+    container: { display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 },
+    header: { height: 56, padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1px solid ${theme.border}`, background: theme.headerBg },
+    headerTitle: { fontSize: 22, fontWeight: 600, color: theme.text },
+    search: { padding: '8px 12px', borderBottom: `1px solid ${theme.border}` },
+    searchInput: { width: '100%', padding: '10px 14px 10px 36px', borderRadius: 20, border: 'none', background: theme.inputBg, color: theme.text, fontSize: 15, outline: 'none' },
+    searchWrap: { position: 'relative' },
+    searchIcon: { position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: theme.textMuted },
+    sidebar: { width: '100%', maxWidth: 360, minWidth: 280, borderRight: `1px solid ${theme.border}`, background: theme.pageBg, display: 'flex', flexDirection: 'column', overflow: 'hidden' },
+    chatList: { flex: 1, overflowY: 'auto' },
+    chatItem: { padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', borderBottom: `1px solid ${theme.border}` },
+    chatItemActive: { background: theme.sidebarBg || 'rgba(0,0,0,.05)' },
+    avatar: { width: 50, height: 50, borderRadius: '50%', background: theme.accent, color: theme.accentText, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 600, flexShrink: 0 },
+    chatInfo: { flex: 1, minWidth: 0 },
+    chatName: { fontSize: 16, fontWeight: 500, color: theme.text, marginBottom: 2 },
+    lastMsg: { fontSize: 14, color: theme.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+    mainArea: { flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: theme.cardBg },
+    empty: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: theme.textMuted, padding: 40, textAlign: 'center' },
+  };
+
+  if (newChatOpen) {
+    return (
+      <div style={s.container}>
+        <header style={s.header}>
+          <button type="button" style={{ border: 'none', background: 'transparent', color: theme.accent, padding: 8 }} onClick={() => setNewChatOpen(false)}>
+            <IconBack width={24} height={24} />
+          </button>
+          <span style={s.headerTitle}>Новое сообщение</span>
+          <span style={{ width: 40 }} />
+        </header>
+        <div style={s.search}>
+          <div style={s.searchWrap}>
+            <span style={s.searchIcon}><IconSearch width={20} height={20} /></span>
+            <input type="text" style={s.searchInput} placeholder="Поиск по нику или имени" />
           </div>
         </div>
-        <div style={styles.newChatRow}>
-          <button type="button" style={styles.newBtn} onClick={() => createNewChat('user')}>
-            Новый чат
-          </button>
-          <button type="button" style={styles.newBtn} onClick={() => createNewChat('group')}>
-            Группа
-          </button>
-          <button type="button" style={styles.newBtn} onClick={() => createNewChat('channel')}>
-            Канал
-          </button>
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+          <div style={{ ...s.chatItem, flexDirection: 'column', alignItems: 'flex-start' }} onClick={() => createNewChat('group')}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%' }}>
+              <div style={{ ...s.avatar, background: theme.sidebarBg, color: theme.text, fontSize: 24 }}>👥</div>
+              <div><div style={s.chatName}>Создать группу</div><div style={s.lastMsg}>Общий чат с несколькими участниками</div></div>
+              <IconChevronRight width={20} height={20} style={{ marginLeft: 'auto', color: theme.textMuted }} />
+            </div>
+          </div>
+          <div style={{ ...s.chatItem, flexDirection: 'column', alignItems: 'flex-start' }} onClick={() => createNewChat('channel')}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%' }}>
+              <div style={{ ...s.avatar, background: theme.sidebarBg, color: theme.text }}><IconChannel width={24} height={24} /></div>
+              <div><div style={s.chatName}>Создать канал</div><div style={s.lastMsg}>Публикация новостей для подписчиков</div></div>
+              <IconChevronRight width={20} height={20} style={{ marginLeft: 'auto', color: theme.textMuted }} />
+            </div>
+          </div>
         </div>
-        <div style={styles.chatList}>
+      </div>
+    );
+  }
+
+  return (
+    <div style={s.container}>
+      <div style={{ ...s.sidebar, display: showListOnly ? 'none' : 'flex' }}>
+        <header style={s.header}>
+          <span style={s.headerTitle}>Чаты</span>
+          <button type="button" style={{ border: 'none', background: 'transparent', color: theme.accent, padding: 8 }} onClick={() => setNewChatOpen(true)} aria-label="Новое сообщение">
+            <IconPen width={24} height={24} />
+          </button>
+        </header>
+        <div style={s.search}>
+          <div style={s.searchWrap}>
+            <span style={s.searchIcon}><IconSearch width={20} height={20} /></span>
+            <input type="text" style={s.searchInput} placeholder="Поиск" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+          </div>
+        </div>
+        <div style={s.chatList}>
           {filteredChats.map((chat) => (
             <div
               key={chat.id}
@@ -350,32 +257,22 @@ export default function Chats() {
               tabIndex={0}
               onClick={() => setSelectedChat(chat)}
               onKeyDown={(e) => e.key === 'Enter' && setSelectedChat(chat)}
-              style={{
-                ...styles.chatItem,
-                ...(selectedChat?.id === chat.id ? styles.chatItemActive : {}),
-              }}
+              style={{ ...s.chatItem, ...(selectedChat?.id === chat.id ? s.chatItemActive : {}) }}
             >
-              <div style={styles.avatar}>{chat.type === 'channel' ? 'C' : chat.type === 'group' ? 'G' : (chat.name && chat.name[0]) || '?'}</div>
-              <div style={styles.chatInfo}>
-                <div style={styles.chatName}>{chat.name}</div>
-                <div style={styles.lastMsg}>
-                  {chat.lastMessage || (chat.type === 'channel' ? 'Канал' : 'Нет сообщений')}
-                </div>
+              <div style={s.avatar}>{chat.photo ? <img src={chat.photo} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} /> : (chat.type === 'channel' ? <IconChannel width={22} height={22} /> : (chat.name?.[0]?.toUpperCase() || '?'))}</div>
+              <div style={s.chatInfo}>
+                <div style={s.chatName}>{chat.name}</div>
+                <div style={s.lastMsg}>{chat.lastMessage || (chat.type === 'channel' ? 'Канал' : 'Нет сообщений')}</div>
               </div>
             </div>
           ))}
         </div>
       </div>
-      <div style={styles.mainArea}>
-        {selectedChat ? (
-          <ChatView chat={selectedChat} onBack={() => setSelectedChat(null)} />
-        ) : (
-          <div style={styles.empty}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>💬</div>
-            <div style={{ fontSize: 16 }}>Выберите чат или создайте новый</div>
-            <div style={{ fontSize: 13, marginTop: 8 }}>
-              Поиск по нику {usernameFormatted ? `— ваш ник ${usernameFormatted}` : '@username'}
-            </div>
+      <div style={s.mainArea}>
+        {selectedChat ? <ChatView chat={selectedChat} onBack={() => setSelectedChat(null)} /> : (
+          <div style={s.empty}>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>💬</div>
+            <div style={{ fontSize: 17 }}>Выберите чат или нажмите ✎ для нового</div>
           </div>
         )}
       </div>

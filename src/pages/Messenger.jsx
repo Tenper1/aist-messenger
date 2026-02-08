@@ -26,99 +26,117 @@ export default function Messenger() {
     return () => m.removeEventListener('change', update);
   }, []);
 
-  const styles = useMemo(() => ({
-    container: {
-      height: '100vh',
-      width: '100vw',
-      display: 'flex',
-      flexDirection: isDesktop ? 'row' : 'column',
-      margin: 0,
-      padding: 0,
-      overflow: 'hidden',
-      color: theme.text,
-      background: theme.pageBg,
-      backgroundAttachment: 'fixed',
-    },
-    sidebar: {
-      display: 'flex',
-      flexDirection: 'column',
-      width: isDesktop ? 72 : '100%',
-      minWidth: isDesktop ? 72 : undefined,
-      maxWidth: isDesktop ? 72 : undefined,
-      height: isDesktop ? '100%' : 'auto',
-      background: theme.headerBg,
-      borderRight: isDesktop ? `1px solid ${theme.border}` : 'none',
-      borderTop: !isDesktop ? `1px solid ${theme.border}` : 'none',
-      backdropFilter: 'blur(20px) saturate(180%)',
-      WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-      zIndex: 10,
-      padding: isDesktop ? '12px 0' : '8px 0',
-      alignItems: 'center',
-      gap: isDesktop ? 8 : 0,
-      flexDirection: isDesktop ? 'column' : 'row',
-      justifyContent: isDesktop ? 'flex-start' : 'space-around',
-    },
-    navButton: {
-      display: 'flex',
-      flexDirection: isDesktop ? 'column' : 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 6,
-      width: isDesktop ? 48 : 'auto',
-      minWidth: isDesktop ? 48 : 56,
-      height: 48,
-      padding: '0 12px',
-      borderRadius: 14,
-      border: 'none',
-      background: 'transparent',
-      color: theme.textMuted,
-      cursor: 'pointer',
-      transition: 'all 0.2s ease',
-    },
-    navButtonActive: {
-      background: theme.sidebarBg || 'rgba(255,255,255,.1)',
-      color: theme.text,
-      fontWeight: 600,
-    },
-    navLabel: {
-      fontSize: 11,
-      fontWeight: 500,
-    },
-    content: {
-      flex: 1,
-      display: 'flex',
-      flexDirection: 'column',
-      overflow: 'hidden',
-      minHeight: 0,
-    },
-  }), [theme, isDesktop]);
+  const styles = useMemo(() => {
+    const accent = theme.accent || '#0088cc';
+    return {
+      container: {
+        height: '100vh',
+        width: '100vw',
+        display: 'flex',
+        flexDirection: 'column',
+        margin: 0,
+        padding: 0,
+        overflow: 'hidden',
+        color: theme.text,
+        background: theme.pageBg,
+      },
+      main: { flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 },
+      tabBar: {
+        display: 'flex',
+        height: 56,
+        background: theme.cardBg || theme.headerBg,
+        borderTop: `1px solid ${theme.border}`,
+        paddingBottom: 'env(safe-area-inset-bottom, 0)',
+      },
+      tab: {
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 2,
+        border: 'none',
+        background: 'transparent',
+        color: theme.textMuted,
+        cursor: 'pointer',
+        padding: '8px 0',
+        fontSize: 10,
+        fontWeight: 500,
+      },
+      tabActive: { color: accent },
+      tabIcon: { width: 24, height: 24 },
+      sidebar: {
+        display: 'flex',
+        flexDirection: 'column',
+        width: 72,
+        minWidth: 72,
+        background: theme.headerBg,
+        borderRight: `1px solid ${theme.border}`,
+        padding: '12px 0',
+        alignItems: 'center',
+        gap: 4,
+      },
+      navBtn: {
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 4,
+        width: 48,
+        height: 48,
+        border: 'none',
+        background: 'transparent',
+        color: theme.textMuted,
+        cursor: 'pointer',
+        borderRadius: 12,
+        fontSize: 10,
+      },
+      navBtnActive: { color: accent, background: theme.sidebarBg || 'rgba(0,0,0,.06)' },
+    };
+  }, [theme]);
 
   return (
     <div style={styles.container}>
-      <nav style={styles.sidebar} aria-label="Навигация">
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => setActiveTab(tab.id)}
-            style={{
-              ...styles.navButton,
-              ...(activeTab === tab.id ? styles.navButtonActive : {}),
-            }}
-            aria-current={activeTab === tab.id ? 'page' : undefined}
-          >
-            <tab.Icon width={22} height={22} aria-hidden />
-            <span style={styles.navLabel}>{tab.label}</span>
-          </button>
-        ))}
-      </nav>
-
-      <main style={styles.content} role="main">
-        {activeTab === 'chats' && <Chats />}
-        {activeTab === 'calls' && <Calls />}
-        {activeTab === 'status' && <Status />}
-        {activeTab === 'settings' && <Settings />}
-      </main>
+      <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+        {isDesktop && (
+          <nav style={styles.sidebar} aria-label="Навигация">
+            {TABS.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                style={{ ...styles.navBtn, ...(activeTab === tab.id ? styles.navBtnActive : {}) }}
+                aria-current={activeTab === tab.id ? 'page' : undefined}
+              >
+                <tab.Icon width={24} height={24} />
+                <span>{tab.label}</span>
+              </button>
+            ))}
+          </nav>
+        )}
+        <main style={styles.main}>
+          {activeTab === 'chats' && <Chats />}
+          {activeTab === 'calls' && <Calls />}
+          {activeTab === 'status' && <Status />}
+          {activeTab === 'settings' && <Settings />}
+        </main>
+      </div>
+      {!isDesktop && (
+        <nav style={styles.tabBar} aria-label="Навигация">
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              style={{ ...styles.tab, ...(activeTab === tab.id ? styles.tabActive : {}) }}
+              aria-current={activeTab === tab.id ? 'page' : undefined}
+            >
+              <tab.Icon width={24} height={24} style={styles.tabIcon} />
+              <span>{tab.label}</span>
+            </button>
+          ))}
+        </nav>
+      )}
     </div>
   );
 }

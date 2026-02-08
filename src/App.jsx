@@ -1,8 +1,10 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import Landing from './pages/Landing';
 import Register from './pages/Register';
 import Messenger from './pages/Messenger';
+import ChannelCreatePage from './pages/ChannelCreatePage';
+import GroupCreatePage from './pages/GroupCreatePage';
 import UserAgreement from './pages/UserAgreement';
 
 function PrivateRoute({ children }) {
@@ -74,14 +76,11 @@ function App() {
         }
       />
       <Route path="/user-agreement" element={<UserAgreement />} />
-      <Route
-        path="/messenger"
-        element={
-          <PrivateRoute>
-            <Messenger />
-          </PrivateRoute>
-        }
-      />
+      <Route path="/messenger" element={<PrivateRoute><div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}><Outlet /></div></PrivateRoute>}>
+        <Route index element={<Messenger />} />
+        <Route path="new-channel" element={<ChannelCreatePage />} />
+        <Route path="new-group" element={<GroupCreatePage />} />
+      </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

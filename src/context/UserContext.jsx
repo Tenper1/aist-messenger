@@ -2,10 +2,11 @@ import React, { createContext, useContext, useMemo, useState, useEffect } from '
 import { isReservedUsername, normalizeUsernameInput } from '../constants/reservedUsernames';
 
 const STORAGE_KEY_PROFILE = 'aist_profile';
+const STORAGE_KEY_PHOTO = 'aist_profile_photo';
 
 const defaultProfile = {
   displayName: '',
-  username: '', // без @, например admin
+  username: '',
 };
 
 function loadProfile() {
@@ -22,9 +23,24 @@ function loadProfile() {
   }
 }
 
+function loadPhoto() {
+  try {
+    return localStorage.getItem(STORAGE_KEY_PHOTO) || '';
+  } catch {
+    return '';
+  }
+}
+
 function saveProfile(profile) {
   try {
     localStorage.setItem(STORAGE_KEY_PROFILE, JSON.stringify(profile));
+  } catch {}
+}
+
+function savePhoto(dataUrl) {
+  try {
+    if (dataUrl) localStorage.setItem(STORAGE_KEY_PHOTO, dataUrl);
+    else localStorage.removeItem(STORAGE_KEY_PHOTO);
   } catch {}
 }
 
@@ -32,13 +48,21 @@ const UserContext = createContext(null);
 
 export function UserProvider({ children }) {
   const [profile, setProfileState] = useState(loadProfile);
+  const [profilePhoto, setProfilePhotoState] = useState(loadPhoto);
 
   useEffect(() => {
     saveProfile(profile);
   }, [profile]);
+  useEffect(() => {
+    savePhoto(profilePhoto);
+  }, [profilePhoto]);
 
   const setProfile = (next) => {
     setProfileState((prev) => (typeof next === 'function' ? next(prev) : { ...prev, ...next }));
+  };
+  const setProfilePhoto = (dataUrl) => {
+    setProfilePhotoState(dataUrl || '');
+    savePhoto(dataUrl || '');
   };
 
   const setDisplayName = (name) => setProfile({ displayName: String(name ?? '').trim().slice(0, 64) });
@@ -61,12 +85,14 @@ export function UserProvider({ children }) {
       setProfile,
       setDisplayName,
       setUsername,
+      setProfilePhoto,
       usernameError,
       displayName: profile.displayName,
       username: profile.username,
       usernameFormatted: profile.username ? `@${profile.username}` : '',
+      profilePhoto,
     }),
-    [profile, usernameError]
+    [profile, profilePhoto, usernameError]
   );
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;

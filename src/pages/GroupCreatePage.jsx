@@ -2,16 +2,24 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import { IconBack } from '../components/Icons';
-import { createChat } from '../lib/chatStorage';
+import { createChat, addOrUpdateChat } from '../lib/chatStorage';
+import { apiCreateChat } from '../lib/api';
 
 export default function GroupCreatePage() {
   const navigate = useNavigate();
   const { theme } = useTheme();
   const [name, setName] = useState('');
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!name.trim()) return;
-    const id = createChat({ name: name.trim(), type: 'group' });
+    const created = await apiCreateChat({ name: name.trim(), type: 'group' });
+    let id;
+    if (created?.id) {
+      id = created.id;
+      addOrUpdateChat({ id: created.id, name: created.name || name.trim(), type: 'group', lastMessage: '', lastTime: null, unread: 0 });
+    } else {
+      id = createChat({ name: name.trim(), type: 'group' });
+    }
     navigate('/messenger', { state: { openChatId: id } });
   };
 

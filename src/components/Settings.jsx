@@ -12,14 +12,17 @@ const SECTIONS = [
   { id: 'qr', title: 'QR-код' },
 ];
 
+const APP_DOMAIN = 'https://aist-messenger.vercel.app';
+
 export default function Settings() {
-  const { theme, themeId, setThemeId, themeList } = useTheme();
+  const { theme, themeId, setThemeId, themeList, chatBg, setChatBg, chatBgPresets } = useTheme();
   const { displayName, username, usernameFormatted, usernameError, setDisplayName, setUsername, setProfilePhoto, profilePhoto } = useUser();
   const [view, setView] = useState('main');
   const [notifications, setNotifications] = useState(() => localStorage.getItem('aist_notifications') !== 'false');
   const [privacyWrite, setPrivacyWrite] = useState('everyone');
   const [privacyStatus, setPrivacyStatus] = useState('everyone');
   const [privacyStories, setPrivacyStories] = useState('contacts');
+  const [customChatBg, setCustomChatBg] = useState('');
 
   const saveNotifications = async (v) => {
     if (v) {
@@ -105,13 +108,31 @@ export default function Settings() {
                 {themeId === t.id && <span style={{ color: theme.accent, fontSize: 14 }}>✓</span>}
               </div>
             ))}
+            <div style={base.sectionTitle}>Фон чатов и каналов</div>
+            {(chatBgPresets || []).map((p) => (
+              <div key={p.id} style={base.row} onClick={() => { setChatBg(p.value); setCustomChatBg(''); }}>
+                <span style={base.rowLabel}>{p.name}</span>
+                {(chatBg === p.value || (!chatBg && p.id === 'default')) && <span style={{ color: theme.accent, fontSize: 14 }}>✓</span>}
+              </div>
+            ))}
+            <div style={{ ...base.row, flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
+              <span style={base.rowLabel}>Свой фон (URL картинки или CSS)</span>
+              <input
+                type="text"
+                placeholder="https://… или linear-gradient(...)"
+                value={customChatBg || (chatBg && !(chatBgPresets || []).some((p) => p.value === chatBg) ? chatBg : '')}
+                onChange={(e) => setCustomChatBg(e.target.value)}
+                onBlur={() => customChatBg.trim() && setChatBg(customChatBg.trim())}
+                style={{ padding: '10px 14px', borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.inputBg, color: theme.text, fontSize: 14, outline: 'none' }}
+              />
+            </div>
           </div>
         )}
         {view === 'qr' && (
           <div style={{ padding: 16, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <div style={base.rowLabel}>Мой QR для контактов</div>
             <div style={{ padding: 16, background: '#fff', borderRadius: 12, marginTop: 12 }}>
-              <QRCodeSVG value={username ? `https://get-aist.ru/add/${username}` : 'https://get-aist.ru/me'} size={200} level="M" />
+              <QRCodeSVG value={username ? `${APP_DOMAIN}/add/${username}` : `${APP_DOMAIN}/me`} size={200} level="M" />
             </div>
           </div>
         )}

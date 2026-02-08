@@ -6,39 +6,65 @@ import { IconBack, IconSearch, IconPen, IconChannel, IconChevronRight, IconPhone
 import CallScreen from './CallScreen';
 import {
   getChatList,
+  saveChatList,
   getMessages,
   appendMessage,
   addOrUpdateChat,
   createChat,
+  getChannelMeta,
+  saveChannelMeta,
 } from '../lib/chatStorage';
+import { apiGetChats, apiGetMessages, apiSendMessage, apiCreateChat } from '../lib/api';
 
+const APP_DOMAIN = 'https://aist-messenger.vercel.app';
 const accent = '#0088cc';
 
 function ChatView({ chat, onBack }) {
-  const { theme } = useTheme();
+  const { theme, chatBg } = useTheme();
   const { displayName } = useUser();
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [attachPreview, setAttachPreview] = useState(null);
   const [callMode, setCallMode] = useState(null);
+  const [showChannelInfo, setShowChannelInfo] = useState(false);
   const isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches;
+  const messagesAreaBg = chatBg || (theme.isDark ? 'rgba(0,0,0,.12)' : 'rgba(255,255,255,.25)');
+  const channelMeta = chat.type === 'channel' ? getChannelMeta(chat.id) : null;
+  const channelLink = channelMeta?.shareLink || `${APP_DOMAIN}/c/${chat.id}`;
 
   useEffect(() => {
-    setMessages(getMessages(chat.id));
+    let cancelled = false;
+    (async () => {
+      const fromApi = await apiGetMessages(chat.id);
+      if (cancelled) return;
+      if (Array.isArray(fromApi) && fromApi.length >= 0) {
+        setMessages(fromApi);
+        return;
+      }
+      setMessages(getMessages(chat.id));
+    })();
+    return () => { cancelled = true; };
   }, [chat.id]);
 
-  const sendMessage = useCallback((textOrAttachment) => {
+  const sendMessage = useCallback(async (textOrAttachment) => {
     const isAttach = typeof textOrAttachment === 'object';
     const text = isAttach ? textOrAttachment.caption || '' : (textOrAttachment || '').trim();
     const attachment = isAttach ? textOrAttachment : null;
     if (!text && !attachment) return;
-    const msg = {
+    const fallbackMsg = {
       fromMe: true,
       text: text || (attachment ? (attachment.type === 'image' ? 'Фото' : 'Видео') : ''),
       time: new Date().toISOString(),
       senderName: displayName || 'Вы',
       attachment: attachment ? { type: attachment.type, url: attachment.url } : undefined,
     };
+    const fromApi = await apiSendMessage(chat.id, {
+      text: fallbackMsg.text,
+      attachment: attachment ? { type: attachment.type, url: attachment.url } : null,
+    });
+    const msg = fromApi
+      ? { ...fromApi, senderName: displayName || 'Вы' }
+      : { ...fallbackMsg, id: `m_${Date.now()}_${Math.random().toString(36).slice(2, 9)}` };
     const next = appendMessage(chat.id, msg);
     setMessages(next);
     setInputValue('');
@@ -46,14 +72,19 @@ function ChatView({ chat, onBack }) {
     addOrUpdateChat({ ...chat, lastMessage: text || 'Медиа', lastTime: Date.now() });
   }, [chat, displayName]);
 
+  const MAX_FILE_MB = 16;
+  const ALLOWED_IMAGE = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+  const ALLOWED_VIDEO = ['video/mp4', 'video/webm'];
   const onAttach = (e) => {
     const f = e.target.files?.[0];
     if (!f) return;
-    if (f.type.startsWith('image/')) {
+    const sizeMB = f.size / (1024 * 1024);
+    if (sizeMB > MAX_FILE_MB) return;
+    if (ALLOWED_IMAGE.includes(f.type)) {
       const r = new FileReader();
       r.onload = () => setAttachPreview({ type: 'image', url: r.result });
       r.readAsDataURL(f);
-    } else if (f.type.startsWith('video/')) {
+    } else if (ALLOWED_VIDEO.includes(f.type)) {
       const r = new FileReader();
       r.onload = () => setAttachPreview({ type: 'video', url: r.result });
       r.readAsDataURL(f);
@@ -69,14 +100,44 @@ function ChatView({ chat, onBack }) {
         <button type="button" style={{ border: 'none', background: 'transparent', color: theme.accent, padding: 8, cursor: 'pointer', display: isMobile ? 'block' : 'none' }} onClick={onBack}>
           <IconBack width={24} height={24} />
         </button>
-        <span style={{ flex: 1, fontWeight: 600, fontSize: 16 }}>{chat.name}</span>
-        <button type="button" style={{ border: 'none', background: 'transparent', padding: 8, color: theme.text, cursor: 'pointer' }} aria-label="Голосовой звонок" onClick={() => setCallMode('voice')}><IconPhone width={22} height={22} /></button>
-        <button type="button" style={{ border: 'none', background: 'transparent', padding: 8, color: theme.text, cursor: 'pointer' }} aria-label="Видеозвонок" onClick={() => setCallMode('video')}><IconVideo width={22} height={22} /></button>
+        <button
+          type="button"
+          onClick={() => chat.type === 'channel' && setShowChannelInfo(true)}
+          style={{ flex: 1, border: 'none', background: 'transparent', padding: 8, cursor: chat.type === 'channel' ? 'pointer' : 'default', textAlign: 'left' }}
+        >
+          <span style={{ fontWeight: 600, fontSize: 16, color: theme.text }}>{chat.name}</span>
+        </button>
+        {chat.type !== 'channel' && (
+          <>
+            <button type="button" style={{ border: 'none', background: 'transparent', padding: 8, color: theme.text, cursor: 'pointer' }} aria-label="Голосовой звонок" onClick={() => setCallMode('voice')}><IconPhone width={22} height={22} /></button>
+            <button type="button" style={{ border: 'none', background: 'transparent', padding: 8, color: theme.text, cursor: 'pointer' }} aria-label="Видеозвонок" onClick={() => setCallMode('video')}><IconVideo width={22} height={22} /></button>
+          </>
+        )}
       </header>
+      {showChannelInfo && channelMeta && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Информация о канале"
+          style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, background: 'rgba(0,0,0,.5)' }}
+          onClick={() => setShowChannelInfo(false)}
+        >
+          <div style={{ background: theme.cardBg, borderRadius: 16, padding: 20, maxWidth: 360, width: '100%', border: `1px solid ${theme.border}`, boxShadow: '0 8px 32px rgba(0,0,0,.2)' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 12, color: theme.text }}>{chat.name}</div>
+            {channelMeta.description ? <p style={{ fontSize: 14, color: theme.textMuted, marginBottom: 12, whiteSpace: 'pre-wrap' }}>{channelMeta.description}</p> : null}
+            <div style={{ fontSize: 13, color: theme.textMuted, marginBottom: 8 }}>Ссылка на канал:</div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input readOnly value={channelLink} style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.inputBg, color: theme.text, fontSize: 13 }} />
+              <button type="button" onClick={() => { navigator.clipboard?.writeText(channelLink); }} style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: theme.accent, color: theme.accentText, cursor: 'pointer', fontSize: 14 }}>Копировать</button>
+            </div>
+            <button type="button" onClick={() => setShowChannelInfo(false)} style={{ marginTop: 16, width: '100%', padding: 10, borderRadius: 8, border: 'none', background: theme.sidebarBg, color: theme.text, cursor: 'pointer' }}>Закрыть</button>
+          </div>
+        </div>
+      )}
       {callMode && (
         <CallScreen peerName={chat.name} isVideo={callMode === 'video'} onEnd={() => setCallMode(null)} />
       )}
-      <div style={{ flex: 1, overflowY: 'auto', padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: 12, display: 'flex', flexDirection: 'column', gap: 8, background: messagesAreaBg }}>
         {messages.length === 0 && (
           <div style={{ color: theme.textMuted, fontSize: 14, textAlign: 'center', padding: 24 }}>Нет сообщений</div>
         )}
@@ -106,19 +167,40 @@ function ChatView({ chat, onBack }) {
           </div>
         </div>
       )}
-      <div style={{ padding: 8, borderTop: `1px solid ${theme.border}`, background: theme.headerBg, display: 'flex', gap: 8, alignItems: 'flex-end' }}>
-        <label style={{ cursor: 'pointer', color: theme.textMuted, padding: 8 }}>
-          <input type="file" accept="image/*,video/*" style={{ display: 'none' }} onChange={onAttach} />
+      <div style={{ padding: 10, borderTop: `1px solid ${theme.border}`, background: theme.headerBg, display: 'flex', gap: 10, alignItems: 'center' }}>
+        <label style={{ cursor: 'pointer', color: theme.textMuted, padding: 8, flexShrink: 0 }}>
+          <input type="file" accept="image/*,video/*,.pdf,.doc,.docx" style={{ display: 'none' }} onChange={onAttach} />
           <IconAttach width={24} height={24} />
         </label>
         <input
-          style={{ flex: 1, padding: '10px 14px', borderRadius: 20, border: 'none', background: theme.inputBg, color: theme.text, fontSize: 15, outline: 'none' }}
+          style={{ flex: 1, minWidth: 0, padding: '12px 16px', borderRadius: 24, border: `1px solid ${theme.border}`, background: theme.inputBg, color: theme.text, fontSize: 15, outline: 'none' }}
           placeholder="Сообщение"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (attachPreview) sendMessage({ ...attachPreview, caption: inputValue }); else sendMessage(inputValue); } }}
         />
-        <button type="button" onClick={() => attachPreview ? sendMessage({ ...attachPreview, caption: inputValue }) : sendMessage(inputValue)} style={{ padding: '10px 20px', borderRadius: '50%', border: 'none', background: theme.accent, color: theme.accentText, cursor: 'pointer' }}>
+        <button
+          type="button"
+          onClick={() => attachPreview ? sendMessage({ ...attachPreview, caption: inputValue }) : sendMessage(inputValue)}
+          style={{
+            width: 44,
+            height: 44,
+            minWidth: 44,
+            minHeight: 44,
+            flexShrink: 0,
+            padding: 0,
+            borderRadius: '50%',
+            border: 'none',
+            background: theme.accent,
+            color: theme.accentText,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 18,
+          }}
+          aria-label="Отправить"
+        >
           ➤
         </button>
       </div>
@@ -144,7 +226,21 @@ export default function Chats() {
     }
   }, [location.state?.openChatId, navigate]);
 
-  const refreshList = useCallback(() => setChatList(getChatList()), []);
+  const refreshList = useCallback(async () => {
+    const fromApi = await apiGetChats();
+    if (Array.isArray(fromApi) && fromApi.length >= 0) {
+      try {
+        saveChatList(fromApi);
+      } catch {}
+      setChatList(fromApi);
+      return;
+    }
+    setChatList(getChatList());
+  }, []);
+
+  useEffect(() => {
+    refreshList();
+  }, [refreshList]);
 
   const filteredChats = useMemo(() => {
     const q = searchQuery.trim().toLowerCase().replace(/^@/, '');
@@ -152,7 +248,7 @@ export default function Chats() {
     return chatList.filter((c) => (c.name && c.name.toLowerCase().includes(q)) || (c.username && c.username.toLowerCase().includes(q)));
   }, [chatList, searchQuery]);
 
-  const createNewChat = (type) => {
+  const createNewChat = async (type) => {
     if (type === 'channel') {
       setNewChatOpen(false);
       navigate('/messenger/new-channel');
@@ -165,9 +261,16 @@ export default function Chats() {
     }
     const name = window.prompt('Введите ник @ или имя');
     if (!name?.trim()) return;
-    const id = createChat({ name: name.trim(), type: 'user' });
-    refreshList();
-    setSelectedChat(getChatList().find((c) => c.id === id) || { id, name: name.trim(), type: 'user' });
+    const created = await apiCreateChat({ name: name.trim(), type: 'user' });
+    if (created?.id) {
+      addOrUpdateChat({ id: created.id, name: created.name || name.trim(), type: 'user', lastMessage: '', lastTime: null, unread: 0 });
+      await refreshList();
+      setSelectedChat(created);
+    } else {
+      const id = createChat({ name: name.trim(), type: 'user' });
+      await refreshList();
+      setSelectedChat(getChatList().find((c) => c.id === id) || { id, name: name.trim(), type: 'user' });
+    }
     setNewChatOpen(false);
   };
 
@@ -186,7 +289,7 @@ export default function Chats() {
     searchInput: { width: '100%', padding: '10px 14px 10px 36px', borderRadius: 20, border: 'none', background: theme.inputBg, color: theme.text, fontSize: 15, outline: 'none' },
     searchWrap: { position: 'relative' },
     searchIcon: { position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: theme.textMuted },
-    sidebar: { width: '100%', maxWidth: 360, minWidth: 280, borderRight: `1px solid ${theme.border}`, background: theme.pageBg, display: 'flex', flexDirection: 'column', overflow: 'hidden' },
+    sidebar: { width: '100%', maxWidth: 360, minWidth: 280, borderRight: `1px solid ${theme.border}`, background: theme.sidebarBg || theme.headerBg, backdropFilter: 'saturate(180%) blur(12px)', WebkitBackdropFilter: 'saturate(180%) blur(12px)', display: 'flex', flexDirection: 'column', overflow: 'hidden' },
     chatList: { flex: 1, overflowY: 'auto' },
     chatItem: { padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', borderBottom: `1px solid ${theme.border}` },
     chatItemActive: { background: theme.sidebarBg || 'rgba(0,0,0,.05)' },
@@ -194,7 +297,7 @@ export default function Chats() {
     chatInfo: { flex: 1, minWidth: 0 },
     chatName: { fontSize: 16, fontWeight: 500, color: theme.text, marginBottom: 2 },
     lastMsg: { fontSize: 14, color: theme.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-    mainArea: { flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: theme.cardBg },
+    mainArea: { flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: theme.cardBg, backdropFilter: 'saturate(180%) blur(8px)', WebkitBackdropFilter: 'saturate(180%) blur(8px)', borderLeft: theme.border ? `1px solid ${theme.border}` : undefined },
     empty: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: theme.textMuted, padding: 40, textAlign: 'center' },
   };
 

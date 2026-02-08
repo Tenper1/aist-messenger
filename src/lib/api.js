@@ -1,0 +1,80 @@
+/**
+ * API для синхронизации чатов и сообщений. Один аккаунт (телефон) — одни чаты на всех устройствах.
+ */
+
+const API_BASE = process.env.REACT_APP_API_URL || 'https://api.get-aist.ru';
+
+function getToken() {
+  try {
+    return localStorage.getItem('aist_token') || null;
+  } catch {
+    return null;
+  }
+}
+
+async function request(method, path, body = null) {
+  const token = getToken();
+  const opts = {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+  };
+  if (token) opts.headers.Authorization = `Bearer ${token}`;
+  if (body != null) opts.body = JSON.stringify(body);
+  const res = await fetch(`${API_BASE}${path}`, opts);
+  if (!res.ok) {
+    const err = new Error(res.statusText || 'Request failed');
+    err.status = res.status;
+    throw err;
+  }
+  if (res.status === 204) return null;
+  return res.json();
+}
+
+/** Список чатов с сервера (по userId из токена). При ошибке или без токена — null. */
+export async function apiGetChats() {
+  if (!getToken()) return null;
+  try {
+    return await request('GET', '/api/chats');
+  } catch {
+    return null;
+  }
+}
+
+/** Сообщения чата с сервера. При ошибке — null. */
+export async function apiGetMessages(chatId) {
+  if (!getToken() || !chatId) return null;
+  try {
+    const list = await request('GET', `/api/chats/${encodeURIComponent(chatId)}/messages`);
+    return Array.isArray(list) ? list : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Отправить сообщение на сервер. Возвращает созданное сообщение или null. */
+export async function apiSendMessage(chatId, { text, attachment }) {
+  if (!getToken() || !chatId) return null;
+  try {
+    return await request('POST', `/api/chats/${encodeURIComponent(chatId)}/messages`, { text: text || '', attachment: attachment || null });
+  } catch {
+    return null;
+  }
+}
+
+/** Создать чат на сервере. Возвращает чат или null. */
+export async function apiCreateChat(payload) {
+  if (!getToken()) return null;
+  try {
+    return await request('POST', '/api/chats', {
+      name: payload.name || 'Чат',
+      type: payload.type || 'user',
+      photo: payload.photo || null,
+      description: payload.description || null,
+      shareLink: payload.shareLink || null,
+      admins: payload.admins || [],
+      moderators: payload.moderators || [],
+    });
+  } catch {
+    return null;
+  }
+}

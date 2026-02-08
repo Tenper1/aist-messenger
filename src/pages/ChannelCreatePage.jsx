@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import { IconBack, IconCamera } from '../components/Icons';
-import { createChat, saveChannelMeta } from '../lib/chatStorage';
+import { createChat, addOrUpdateChat, saveChannelMeta } from '../lib/chatStorage';
+import { apiCreateChat } from '../lib/api';
 
 const steps = ['Название и фото', 'Описание', 'Админы и ссылка'];
 
@@ -43,26 +44,47 @@ export default function ChannelCreatePage() {
     else createChannel();
   };
 
-  const createChannel = () => {
+  const createChannel = async () => {
     if (!name.trim()) return;
-    const chatId = createChat({
+    const shareLinkBase = 'https://aist-messenger.vercel.app/c/';
+    const createdFromApi = await apiCreateChat({
       name: name.trim(),
       type: 'channel',
       description: description.trim(),
+      shareLink: undefined,
       admins,
       moderators,
     });
-    saveChannelMeta(chatId, {
-      description: description.trim(),
-      shareLink: `https://get-aist.ru/c/${chatId}`,
-      admins,
-      moderators,
-    });
+    let chatId;
+    if (createdFromApi?.id) {
+      chatId = createdFromApi.id;
+      addOrUpdateChat({ id: chatId, name: createdFromApi.name || name.trim(), type: 'channel', lastMessage: '', lastTime: null, unread: 0 });
+      saveChannelMeta(chatId, {
+        description: description.trim(),
+        shareLink: `${shareLinkBase}${chatId}`,
+        admins,
+        moderators,
+      });
+    } else {
+      chatId = createChat({
+        name: name.trim(),
+        type: 'channel',
+        description: description.trim(),
+        admins,
+        moderators,
+      });
+      saveChannelMeta(chatId, {
+        description: description.trim(),
+        shareLink: `${shareLinkBase}${chatId}`,
+        admins,
+        moderators,
+      });
+    }
     setCreated(chatId);
   };
 
   const copyLink = () => {
-    const link = `https://get-aist.ru/c/${created}`;
+    const link = `https://aist-messenger.vercel.app/c/${created}`;
     navigator.clipboard?.writeText(link);
   };
 

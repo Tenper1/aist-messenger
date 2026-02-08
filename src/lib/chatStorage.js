@@ -77,7 +77,7 @@ export function saveChannelMeta(chatId, meta) {
 
 export function createChat({ id, name, type = 'user', avatar, description, shareLink, admins, moderators }) {
   const chatId = id || `chat_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-  const link = shareLink || (type === 'channel' ? `https://get-aist.ru/c/${chatId}` : '');
+  const link = shareLink || (type === 'channel' ? `https://aist-messenger.vercel.app/c/${chatId}` : '');
   addOrUpdateChat({
     id: chatId,
     name: name || 'Чат',

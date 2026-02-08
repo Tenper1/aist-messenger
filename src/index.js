@@ -18,6 +18,7 @@ const globalStyles = `
     position: fixed;
     -webkit-text-size-adjust: 100%;
     -webkit-tap-highlight-color: transparent;
+    background: #e8eef7;
   }
   body {
     margin: 0;
@@ -29,6 +30,8 @@ const globalStyles = `
     overscroll-behavior: none;
     -webkit-overflow-scrolling: touch;
     touch-action: pan-x pan-y;
+    background: #e8eef7;
+    color: #0f192d;
   }
   #root {
     width: 100%;

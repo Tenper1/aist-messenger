@@ -26,74 +26,85 @@ export default function Messenger() {
     return () => m.removeEventListener('change', update);
   }, []);
 
-  const styles = useMemo(() => {
-    const accent = theme.accent || '#0088cc';
-    return {
-      container: {
-        height: '100vh',
-        width: '100vw',
-        display: 'flex',
-        flexDirection: 'column',
-        margin: 0,
-        padding: 0,
-        overflow: 'hidden',
-        color: theme.text,
-        background: theme.pageBg,
-      },
-      main: { flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 },
-      tabBar: {
-        display: 'flex',
-        height: 56,
-        background: theme.cardBg || theme.headerBg,
-        borderTop: `1px solid ${theme.border}`,
-        paddingBottom: 'env(safe-area-inset-bottom, 0)',
-      },
-      tab: {
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 2,
-        border: 'none',
-        background: 'transparent',
-        color: theme.textMuted,
-        cursor: 'pointer',
-        padding: '8px 0',
-        fontSize: 10,
-        fontWeight: 500,
-      },
-      tabActive: { color: accent },
-      tabIcon: { width: 24, height: 24 },
-      sidebar: {
-        display: 'flex',
-        flexDirection: 'column',
-        width: 72,
-        minWidth: 72,
-        background: theme.headerBg,
-        borderRight: `1px solid ${theme.border}`,
-        padding: '12px 0',
-        alignItems: 'center',
-        gap: 4,
-      },
-      navBtn: {
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 4,
-        width: 48,
-        height: 48,
-        border: 'none',
-        background: 'transparent',
-        color: theme.textMuted,
-        cursor: 'pointer',
-        borderRadius: 12,
-        fontSize: 10,
-      },
-      navBtnActive: { color: accent, background: theme.sidebarBg || 'rgba(0,0,0,.06)' },
-    };
-  }, [theme]);
+  const accent = theme.accent || '#0088cc';
+  const tabBarBg = theme.tabBarBg || theme.headerBg || theme.cardBg;
+  const iconColor = (id) => (activeTab === id ? accent : (theme.textMuted || '#707579'));
+
+  const styles = useMemo(() => ({
+    container: {
+      height: '100vh',
+      width: '100vw',
+      display: 'flex',
+      flexDirection: 'column',
+      margin: 0,
+      padding: 0,
+      overflow: 'hidden',
+      color: theme.text,
+      background: theme.pageBg,
+    },
+    main: { flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 },
+    tabBar: {
+      display: 'flex',
+      height: 56,
+      minHeight: 56,
+      background: tabBarBg,
+      borderTop: `1px solid ${theme.border}`,
+      paddingBottom: 'env(safe-area-inset-bottom, 0)',
+      backdropFilter: 'saturate(180%) blur(12px)',
+      WebkitBackdropFilter: 'saturate(180%) blur(12px)',
+    },
+    tab: {
+      flex: 1,
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 2,
+      border: 'none',
+      background: 'transparent',
+      cursor: 'pointer',
+      padding: '6px 4px',
+      fontSize: 10,
+      fontWeight: 500,
+      minWidth: 0,
+      color: theme.textMuted,
+    },
+    tabIconWrap: {
+      width: 26,
+      height: 26,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+    },
+    sidebar: {
+      display: 'flex',
+      flexDirection: 'column',
+      width: 72,
+      minWidth: 72,
+      background: theme.headerBg,
+      borderRight: `1px solid ${theme.border}`,
+      padding: '12px 0',
+      alignItems: 'center',
+      gap: 4,
+    },
+    navBtn: {
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 4,
+      width: 48,
+      height: 48,
+      border: 'none',
+      background: 'transparent',
+      cursor: 'pointer',
+      borderRadius: 12,
+      fontSize: 10,
+      color: theme.textMuted,
+    },
+    navBtnActive: { color: accent, background: theme.sidebarBg || 'rgba(0,0,0,.06)' },
+  }), [theme, activeTab, accent, tabBarBg]);
 
   return (
     <div style={styles.container}>
@@ -108,7 +119,9 @@ export default function Messenger() {
                 style={{ ...styles.navBtn, ...(activeTab === tab.id ? styles.navBtnActive : {}) }}
                 aria-current={activeTab === tab.id ? 'page' : undefined}
               >
-                <tab.Icon width={24} height={24} />
+                <span style={styles.tabIconWrap}>
+                  <tab.Icon width={24} height={24} style={{ display: 'block', color: 'inherit' }} />
+                </span>
                 <span>{tab.label}</span>
               </button>
             ))}
@@ -128,10 +141,15 @@ export default function Messenger() {
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id)}
-              style={{ ...styles.tab, ...(activeTab === tab.id ? styles.tabActive : {}) }}
+              style={{
+                ...styles.tab,
+                color: iconColor(tab.id),
+              }}
               aria-current={activeTab === tab.id ? 'page' : undefined}
             >
-              <tab.Icon width={24} height={24} style={styles.tabIcon} />
+              <span style={styles.tabIconWrap}>
+                <tab.Icon width={24} height={24} style={{ display: 'block', color: 'inherit' }} />
+              </span>
               <span>{tab.label}</span>
             </button>
           ))}

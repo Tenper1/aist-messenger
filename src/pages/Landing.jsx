@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 
 const styles = {
   page: {
+    height: '100vh',
     minHeight: '100vh',
     width: '100%',
     margin: 0,

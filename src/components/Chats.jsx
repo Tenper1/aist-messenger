@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import { useUser } from '../context/UserContext';
@@ -15,8 +15,10 @@ import {
   saveChannelMeta,
 } from '../lib/chatStorage';
 import { apiGetChats, apiGetMessages, apiSendMessage, apiCreateChat } from '../lib/api';
+import { getFolders, addChatToFolder, removeChatFromFolder, getChatFolderIds } from '../lib/folderStorage';
 
 const APP_DOMAIN = 'https://aist-messenger.vercel.app';
+const FOLDER_ALL = 'all';
 const accent = '#0088cc';
 
 function ChatView({ chat, onBack }) {
@@ -216,6 +218,21 @@ export default function Chats() {
   const [selectedChat, setSelectedChat] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [newChatOpen, setNewChatOpen] = useState(false);
+  const [activeFolderId, setActiveFolderId] = useState(FOLDER_ALL);
+  const [foldersRefresh, setFoldersRefresh] = useState(0);
+  const [folderMenuChatId, setFolderMenuChatId] = useState(null);
+  const folderMenuRef = useRef(null);
+  const folders = useMemo(() => getFolders(), [foldersRefresh]);
+
+  useEffect(() => {
+    if (!folderMenuChatId) return;
+    const onDocClick = (e) => {
+      if (folderMenuRef.current?.contains(e.target) || e.target.closest('[data-folder-trigger]')) return;
+      setFolderMenuChatId(null);
+    };
+    document.addEventListener('click', onDocClick);
+    return () => document.removeEventListener('click', onDocClick);
+  }, [folderMenuChatId]);
 
   useEffect(() => {
     const id = location.state?.openChatId;
@@ -247,6 +264,13 @@ export default function Chats() {
     if (!q) return chatList;
     return chatList.filter((c) => (c.name && c.name.toLowerCase().includes(q)) || (c.username && c.username.toLowerCase().includes(q)));
   }, [chatList, searchQuery]);
+
+  const chatsByFolder = useMemo(() => {
+    if (activeFolderId === FOLDER_ALL) return filteredChats;
+    const folder = folders.find((f) => f.id === activeFolderId);
+    if (!folder?.chatIds?.length) return [];
+    return filteredChats.filter((c) => folder.chatIds.includes(c.id));
+  }, [activeFolderId, filteredChats, folders]);
 
   const createNewChat = async (type) => {
     if (type === 'channel') {
@@ -297,7 +321,7 @@ export default function Chats() {
     chatInfo: { flex: 1, minWidth: 0 },
     chatName: { fontSize: 16, fontWeight: 500, color: theme.text, marginBottom: 2 },
     lastMsg: { fontSize: 14, color: theme.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-    mainArea: { flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0, background: theme.cardBg, backdropFilter: 'saturate(180%) blur(8px)', WebkitBackdropFilter: 'saturate(180%) blur(8px)', borderLeft: theme.border ? `1px solid ${theme.border}` : undefined },
+    mainArea: { flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0, background: theme.cardBg, backdropFilter: 'saturate(180%) blur(8px)', WebkitBackdropFilter: 'saturate(180%) blur(8px)', borderLeft: theme.border ? `1px solid ${theme.border}` : undefined, transition: 'opacity 0.15s ease' },
     empty: {
       flex: 1,
       display: 'flex',
@@ -365,21 +389,41 @@ export default function Chats() {
             <input type="text" style={s.searchInput} placeholder="Поиск" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
           </div>
         </div>
+        <div style={{ padding: '8px 12px 0', borderBottom: `1px solid ${theme.border}`, display: 'flex', gap: 4, overflowX: 'auto', flexShrink: 0 }}>
+          <button type="button" style={{ padding: '8px 14px', borderRadius: 20, border: 'none', background: activeFolderId === FOLDER_ALL ? theme.accent : 'transparent', color: activeFolderId === FOLDER_ALL ? theme.accentText || '#fff' : theme.textMuted, fontSize: 14, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => { setFolderMenuChatId(null); setActiveFolderId(FOLDER_ALL); }}>Все чаты</button>
+          {folders.map((f) => (
+            <button key={f.id} type="button" style={{ padding: '8px 14px', borderRadius: 20, border: 'none', background: activeFolderId === f.id ? theme.accent : 'transparent', color: activeFolderId === f.id ? theme.accentText || '#fff' : theme.textMuted, fontSize: 14, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => { setFolderMenuChatId(null); setActiveFolderId(f.id); }}>{f.name}</button>
+          ))}
+        </div>
         <div className="scrollable" style={s.chatList}>
-          {filteredChats.map((chat) => (
+          {chatsByFolder.map((chat) => (
             <div
               key={chat.id}
               role="button"
               tabIndex={0}
-              onClick={() => setSelectedChat(chat)}
+              onClick={() => { setFolderMenuChatId(null); setSelectedChat(chat); }}
               onKeyDown={(e) => e.key === 'Enter' && setSelectedChat(chat)}
-              style={{ ...s.chatItem, ...(selectedChat?.id === chat.id ? s.chatItemActive : {}) }}
+              style={{ ...s.chatItem, ...(selectedChat?.id === chat.id ? s.chatItemActive : {}), position: 'relative' }}
             >
               <div style={s.avatar}>{chat.photo ? <img src={chat.photo} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} /> : (chat.type === 'channel' ? <IconChannel width={22} height={22} /> : (chat.name?.[0]?.toUpperCase() || '?'))}</div>
               <div style={s.chatInfo}>
                 <div style={s.chatName}>{chat.name}</div>
                 <div style={s.lastMsg}>{chat.lastMessage || (chat.type === 'channel' ? 'Канал' : 'Нет сообщений')}</div>
               </div>
+              <button type="button" data-folder-trigger aria-label="Папки" style={{ border: 'none', background: 'transparent', color: theme.textMuted, padding: 6, borderRadius: 8, cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); setFolderMenuChatId(folderMenuChatId === chat.id ? null : chat.id); }}>⋯</button>
+              {folderMenuChatId === chat.id && (
+                <div ref={folderMenuRef} style={{ position: 'absolute', right: 8, top: '100%', zIndex: 10, marginTop: 2, padding: 8, borderRadius: 12, background: theme.cardBg || theme.sidebarBg, boxShadow: '0 4px 12px rgba(0,0,0,.2)', minWidth: 180 }} onClick={(e) => e.stopPropagation()}>
+                  <div style={{ fontSize: 12, color: theme.textMuted, marginBottom: 6 }}>Добавить в папку</div>
+                  {folders.length === 0 ? <div style={{ fontSize: 13, color: theme.textMuted }}>Создайте папки в Настройках</div> : folders.map((f) => {
+                    const inFolder = (f.chatIds || []).includes(chat.id);
+                    return (
+                      <button key={f.id} type="button" style={{ display: 'block', width: '100%', padding: '8px 10px', border: 'none', background: inFolder ? 'rgba(0,136,204,.15)' : 'transparent', color: theme.text, borderRadius: 8, cursor: 'pointer', textAlign: 'left', fontSize: 14 }} onClick={() => { if (inFolder) removeChatFromFolder(f.id, chat.id); else addChatToFolder(f.id, chat.id); setFoldersRefresh((k) => k + 1); }}>
+                        {inFolder ? '✓ ' : ''}{f.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           ))}
         </div>

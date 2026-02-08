@@ -1,18 +1,91 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useTheme } from '../context/ThemeContext';
 import { useUser } from '../context/UserContext';
 import { requestNotificationPermission } from '../lib/notifications';
+import { getFolders, addFolder, updateFolder, deleteFolder } from '../lib/folderStorage';
 import { IconBack, IconChevronRight, IconCamera } from './Icons';
 
 const SECTIONS = [
   { id: 'notifications', title: 'Уведомления' },
   { id: 'privacy', title: 'Конфиденциальность' },
   { id: 'appearance', title: 'Внешний вид' },
+  { id: 'folders', title: 'Папки чатов' },
   { id: 'qr', title: 'QR-код' },
 ];
 
 const APP_DOMAIN = 'https://aist-messenger.vercel.app';
+
+function FoldersView({ theme, base, onBack }) {
+  const [folders, setFolders] = useState(getFolders());
+  const [editingId, setEditingId] = useState(null);
+  const [editName, setEditName] = useState('');
+
+  const refresh = useCallback(() => setFolders(getFolders()), []);
+
+  const handleAdd = () => {
+    const name = window.prompt('Название папки');
+    if (name?.trim()) {
+      addFolder(name.trim());
+      refresh();
+    }
+  };
+
+  const handleRename = (id) => {
+    const f = folders.find((x) => x.id === id);
+    if (!f) return;
+    setEditingId(id);
+    setEditName(f.name);
+  };
+
+  const submitRename = () => {
+    if (editingId && editName.trim()) {
+      updateFolder(editingId, { name: editName.trim() });
+      refresh();
+    }
+    setEditingId(null);
+    setEditName('');
+  };
+
+  const handleDelete = (id) => {
+    if (window.confirm('Удалить папку? Чаты из неё не удалятся.')) {
+      deleteFolder(id);
+      refresh();
+    }
+  };
+
+  return (
+    <div style={{ padding: 16 }}>
+      <div style={base.sectionTitle}>Папки для сортировки чатов</div>
+      <p style={{ fontSize: 14, color: theme.textMuted, padding: '0 16px 12px' }}>Создайте папки и добавляйте чаты в них кнопкой ⋯ в списке чатов.</p>
+      {folders.map((f) => (
+        <div key={f.id} style={{ ...base.row, flexWrap: 'wrap', gap: 8 }}>
+          {editingId === f.id ? (
+            <>
+              <input
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                onBlur={submitRename}
+                onKeyDown={(e) => e.key === 'Enter' && submitRename()}
+                autoFocus
+                style={{ flex: 1, minWidth: 120, padding: '8px 12px', borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.inputBg, color: theme.text, fontSize: 15, outline: 'none' }}
+              />
+              <button type="button" style={{ padding: '6px 12px', borderRadius: 8, border: 'none', background: theme.accent, color: theme.accentText || '#fff', cursor: 'pointer' }} onClick={submitRename}>Готово</button>
+            </>
+          ) : (
+            <>
+              <span style={base.rowLabel}>{f.name}</span>
+              <span style={{ fontSize: 13, color: theme.textMuted }}>{(f.chatIds || []).length} чатов</span>
+              <button type="button" style={{ padding: 6, border: 'none', background: 'transparent', color: theme.accent, cursor: 'pointer', fontSize: 13 }} onClick={() => handleRename(f.id)}>Переименовать</button>
+              <button type="button" style={{ padding: 6, border: 'none', background: 'transparent', color: '#e53935', cursor: 'pointer', fontSize: 13 }} onClick={() => handleDelete(f.id)}>Удалить</button>
+            </>
+          )}
+        </div>
+      ))}
+      <button type="button" style={{ marginTop: 12, padding: '12px 16px', borderRadius: 12, border: `2px dashed ${theme.border}`, background: 'transparent', color: theme.accent, fontSize: 15, fontWeight: 500, cursor: 'pointer', width: '100%' }} onClick={handleAdd}>+ Создать папку</button>
+    </div>
+  );
+}
 
 export default function Settings() {
   const { theme, themeId, setThemeId, themeList, chatBg, setChatBg, chatBgPresets } = useTheme();
@@ -127,6 +200,9 @@ export default function Settings() {
               />
             </div>
           </div>
+        )}
+        {view === 'folders' && (
+          <FoldersView theme={theme} base={base} onBack={() => setView('main')} />
         )}
         {view === 'qr' && (
           <div style={{ padding: 16, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>

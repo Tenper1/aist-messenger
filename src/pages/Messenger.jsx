@@ -42,7 +42,7 @@ export default function Messenger() {
       color: theme.text,
       background: theme.pageBg,
     },
-    main: { flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 },
+    main: { flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, transition: 'opacity 0.2s ease' },
     tabBar: {
       display: 'flex',
       height: 56,

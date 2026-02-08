@@ -22,19 +22,20 @@ const glassLight = {
   tabBarBg: 'rgba(255,255,255,.92)',
 };
 
+// Цвета как в Telegram Desktop/Web (тёмная тема)
 const glassDark = {
-  pageBg: '#0e1419',
-  text: '#e4ecf4',
-  textMuted: 'rgba(180, 198, 220, .75)',
+  pageBg: '#0e1621',
+  text: '#fff',
+  textMuted: 'rgba(255,255,255,.6)',
   cardBg: '#17212b',
-  cardBorder: 'rgba(255,255,255,.06)',
+  cardBorder: 'transparent',
   inputBg: '#242f3d',
-  inputBorder: 'rgba(255,255,255,.1)',
+  inputBorder: 'rgba(255,255,255,.06)',
   accent: '#5288c1',
-  accentText: '#ffffff',
+  accentText: '#fff',
   headerBg: '#17212b',
   sidebarBg: '#17212b',
-  border: 'rgba(255,255,255,.08)',
+  border: 'rgba(255,255,255,.06)',
   bubbleIn: '#2b5278',
   bubbleOut: '#1e3a5f',
   tabBarBg: '#17212b',

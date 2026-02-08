@@ -135,7 +135,7 @@ function ChatView({ chat, onBack }) {
         </div>
       )}
       {callMode && (
-        <CallScreen peerName={chat.name} isVideo={callMode === 'video'} onEnd={() => setCallMode(null)} />
+        <CallScreen peerName={chat.name} isVideo={callMode === 'video'} onEnd={() => setCallMode(null)} peerUserId={chat.peerUserId || chat.otherUserId} />
       )}
       <div style={{ flex: 1, overflowY: 'auto', padding: 12, display: 'flex', flexDirection: 'column', gap: 8, background: messagesAreaBg }}>
         {messages.length === 0 && (
@@ -289,7 +289,7 @@ export default function Chats() {
     searchInput: { width: '100%', padding: '10px 14px 10px 36px', borderRadius: 20, border: 'none', background: theme.inputBg, color: theme.text, fontSize: 15, outline: 'none' },
     searchWrap: { position: 'relative' },
     searchIcon: { position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: theme.textMuted },
-    sidebar: { width: '100%', maxWidth: 360, minWidth: 280, borderRight: `1px solid ${theme.border}`, background: theme.sidebarBg || theme.headerBg, backdropFilter: 'saturate(180%) blur(12px)', WebkitBackdropFilter: 'saturate(180%) blur(12px)', display: 'flex', flexDirection: 'column', overflow: 'hidden' },
+    sidebar: { width: '100%', maxWidth: 380, minWidth: 260, flexShrink: 0, borderRight: `1px solid ${theme.border}`, background: theme.sidebarBg || theme.headerBg, backdropFilter: 'saturate(180%) blur(12px)', WebkitBackdropFilter: 'saturate(180%) blur(12px)', display: 'flex', flexDirection: 'column', overflow: 'hidden' },
     chatList: { flex: 1, overflowY: 'auto' },
     chatItem: { padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', borderBottom: `1px solid ${theme.border}` },
     chatItemActive: { background: theme.sidebarBg || 'rgba(0,0,0,.05)' },
@@ -297,7 +297,7 @@ export default function Chats() {
     chatInfo: { flex: 1, minWidth: 0 },
     chatName: { fontSize: 16, fontWeight: 500, color: theme.text, marginBottom: 2 },
     lastMsg: { fontSize: 14, color: theme.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-    mainArea: { flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: theme.cardBg, backdropFilter: 'saturate(180%) blur(8px)', WebkitBackdropFilter: 'saturate(180%) blur(8px)', borderLeft: theme.border ? `1px solid ${theme.border}` : undefined },
+    mainArea: { flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0, background: theme.cardBg, backdropFilter: 'saturate(180%) blur(8px)', WebkitBackdropFilter: 'saturate(180%) blur(8px)', borderLeft: theme.border ? `1px solid ${theme.border}` : undefined },
     empty: {
       flex: 1,
       display: 'flex',
@@ -311,6 +311,7 @@ export default function Chats() {
     emptyIconWrap: { width: 64, height: 64, borderRadius: 32, background: theme.sidebarBg || 'rgba(0,0,0,.04)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
     emptyTitle: { fontSize: 17, fontWeight: 600, color: theme.text, marginBottom: 6 },
     emptySub: { fontSize: 15, lineHeight: 1.4 },
+    emptyTagline: { fontSize: 13, color: theme.textMuted, marginTop: 20, opacity: 0.9 },
   };
 
   if (newChatOpen) {
@@ -391,6 +392,7 @@ export default function Chats() {
             </div>
             <div style={s.emptyTitle}>Выберите чат</div>
             <div style={s.emptySub}>Или нажмите кнопку с ручкой выше, чтобы начать новый</div>
+            <div style={s.emptyTagline}>AIST — удобный, комфортный и безопасный мессенджер</div>
           </div>
         )}
       </div>

@@ -1,21 +1,32 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTheme } from '../context/ThemeContext';
-import { IconBack } from './Icons';
+import { IconBack, IconMic, IconMicOff, IconSpeaker, IconKeypad } from './Icons';
 
-export default function CallScreen({ peerName, isVideo, onEnd }) {
+export default function CallScreen({ peerName, isVideo, onEnd, peerUserId }) {
   const { theme } = useTheme();
   const [localStream, setLocalStream] = useState(null);
+  const [remoteStream, setRemoteStream] = useState(null);
+  const [muted, setMuted] = useState(false);
+  const [speaker, setSpeaker] = useState(false);
+  const [showKeypad, setShowKeypad] = useState(false);
   const [error, setError] = useState(null);
+  const [status, setStatus] = useState('calling'); // 'calling' | 'connected'
+  const [wsOpen, setWsOpen] = useState(false);
   const localRef = useRef(null);
+  const remoteRef = useRef(null);
+  const pcRef = useRef(null);
+  const wsRef = useRef(null);
+  const offerSentRef = useRef(false);
 
   useEffect(() => {
-    if (!isVideo) return;
+    const wantVideo = !!isVideo;
     let stream = null;
     navigator.mediaDevices
-      .getUserMedia({ video: true, audio: true })
+      .getUserMedia({ video: wantVideo, audio: true })
       .then((s) => {
         stream = s;
         setLocalStream(s);
+        if (muted) s.getAudioTracks().forEach((t) => (t.enabled = false));
       })
       .catch((e) => setError('Нет доступа к камере или микрофону'));
     return () => {
@@ -28,84 +39,219 @@ export default function CallScreen({ peerName, isVideo, onEnd }) {
     localRef.current.srcObject = localStream;
   }, [localStream]);
 
+  useEffect(() => {
+    if (!remoteRef.current || !remoteStream) return;
+    remoteRef.current.srcObject = remoteStream;
+  }, [remoteStream]);
+
+  useEffect(() => {
+    if (muted && localStream) localStream.getAudioTracks().forEach((t) => (t.enabled = false));
+    if (!muted && localStream) localStream.getAudioTracks().forEach((t) => (t.enabled = true));
+  }, [muted, localStream]);
+
+  const wsUrl = process.env.REACT_APP_WS_URL;
+  const token = typeof localStorage !== 'undefined' ? localStorage.getItem('aist_token') : null;
+
+  useEffect(() => {
+    if (!peerUserId || !wsUrl || !token) return;
+    setWsOpen(false);
+    const base = wsUrl.startsWith('ws') ? wsUrl : wsUrl.replace(/^https?/, (s) => (s === 'https' ? 'wss' : 'ws'));
+    const url = `${base}?token=${encodeURIComponent(token)}`;
+    let ws = null;
+    try {
+      ws = new WebSocket(url);
+      wsRef.current = ws;
+      ws.onopen = () => setWsOpen(true);
+      ws.onmessage = (ev) => {
+        try {
+          const msg = JSON.parse(ev.data);
+          if (msg.event === 'call:answer' && msg.payload?.sdp) {
+            setStatus('connected');
+            if (pcRef.current) pcRef.current.setRemoteDescription(new RTCSessionDescription(msg.payload)).catch(() => {});
+          }
+          if (msg.event === 'call:ice' && msg.payload?.candidate) {
+            if (pcRef.current) pcRef.current.addIceCandidate(new RTCIceCandidate(msg.payload.candidate)).catch(() => {});
+          }
+          if (msg.event === 'call:hangup') onEnd();
+        } catch {}
+      };
+      ws.onerror = () => setError('Ошибка соединения');
+      ws.onclose = () => setWsOpen(false);
+    } catch (e) {
+      setError('WebSocket недоступен');
+    }
+    return () => {
+      if (pcRef.current) { pcRef.current.close(); pcRef.current = null; }
+      if (ws && ws.readyState === WebSocket.OPEN) ws.close();
+      wsRef.current = null;
+      setWsOpen(false);
+      offerSentRef.current = false;
+    };
+  }, [peerUserId, wsUrl, token, onEnd]);
+
+  useEffect(() => {
+    if (!localStream || !wsOpen || !peerUserId || offerSentRef.current || !wsRef.current) return;
+    const ws = wsRef.current;
+    const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+    pcRef.current = pc;
+    localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
+    pc.ontrack = (e) => setRemoteStream(e.streams[0] || e.stream);
+    pc.onicecandidate = (e) => {
+      if (e.candidate && wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(JSON.stringify({ event: 'call:ice', payload: { candidate: e.candidate } }));
+    };
+    pc.createOffer()
+      .then((offer) => pc.setLocalDescription(offer).then(() => offer))
+      .then((offer) => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ event: 'call:offer', payload: { userId: peerUserId, sdp: offer } }));
+          offerSentRef.current = true;
+        }
+      })
+      .catch(() => {});
+    return () => {
+      if (pcRef.current === pc) { pc.close(); pcRef.current = null; }
+    };
+  }, [localStream, wsOpen, peerUserId]);
+
+  const controlBtn = (Icon, active, onClick, label) => (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        width: 56,
+        height: 56,
+        borderRadius: '50%',
+        border: 'none',
+        background: active ? theme.accent : (theme.sidebarBg || 'rgba(255,255,255,.12)'),
+        color: active ? theme.accentText : theme.text,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: 'pointer',
+      }}
+      title={label}
+      aria-label={label}
+    >
+      <Icon width={24} height={24} />
+    </button>
+  );
+
   const styles = {
     overlay: {
       position: 'fixed',
       inset: 0,
-      background: theme.pageBg,
+      background: theme.isDark ? '#0c0c0e' : '#f5f5f7',
       zIndex: 1000,
       display: 'flex',
       flexDirection: 'column',
       color: theme.text,
     },
     header: {
-      padding: 16,
+      padding: '12px 16px',
       display: 'flex',
       alignItems: 'center',
-      justifyContent: 'space-between',
+      gap: 12,
       borderBottom: `1px solid ${theme.border}`,
+      background: theme.headerBg,
     },
-    remote: {
+    center: {
       flex: 1,
       display: 'flex',
+      flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      background: theme.sidebarBg || 'rgba(0,0,0,.2)',
-      position: 'relative',
+      padding: 24,
     },
-    remotePlaceholder: { fontSize: 48, color: theme.textMuted },
-    local: {
+    avatar: {
+      width: 88,
+      height: 88,
+      borderRadius: '50%',
+      background: theme.accent,
+      color: theme.accentText,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: 36,
+      fontWeight: 600,
+      marginBottom: 16,
+    },
+    name: { fontSize: 22, fontWeight: 600, marginBottom: 4 },
+    statusText: { fontSize: 15, color: theme.textMuted },
+    remoteVideo: {
       position: 'absolute',
-      bottom: 80,
+      inset: 0,
+      width: '100%',
+      height: '100%',
+      objectFit: 'cover',
+    },
+    localVideo: {
+      position: 'absolute',
+      bottom: 100,
       right: 16,
-      width: 120,
-      height: 160,
+      width: 100,
+      height: 140,
       borderRadius: 12,
-      overflow: 'hidden',
-      background: '#000',
+      objectFit: 'cover',
       border: `2px solid ${theme.border}`,
     },
-    localVideo: { width: '100%', height: '100%', objectFit: 'cover' },
     controls: {
-      padding: 24,
+      padding: '24px 16px 32px',
+      paddingBottom: 'max(32px, env(safe-area-inset-bottom))',
       display: 'flex',
       justifyContent: 'center',
-      gap: 24,
+      alignItems: 'center',
+      gap: 28,
     },
-    btn: {
-      width: 56,
-      height: 56,
+    endBtn: {
+      width: 64,
+      height: 64,
       borderRadius: '50%',
       border: 'none',
+      background: '#e53935',
+      color: '#fff',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       cursor: 'pointer',
     },
-    endBtn: { background: '#e53935', color: '#fff' },
   };
 
   return (
     <div style={styles.overlay}>
       <header style={styles.header}>
-        <button type="button" style={{ border: 'none', background: 'transparent', color: theme.accent, padding: 8 }} onClick={onEnd}>
+        <button type="button" style={{ border: 'none', background: 'transparent', color: theme.accent, padding: 8 }} onClick={onEnd} aria-label="Назад">
           <IconBack width={24} height={24} />
         </button>
-        <span style={{ fontSize: 17, fontWeight: 600 }}>{isVideo ? 'Видеозвонок' : 'Голосовой звонок'} — {peerName}</span>
-        <span style={{ width: 40 }} />
+        <span style={{ flex: 1, fontSize: 17, fontWeight: 600 }}>
+          {isVideo ? 'Видеозвонок' : 'Голосовой звонок'} — {peerName}
+        </span>
       </header>
-      <div style={styles.remote}>
-        {error && <div style={{ color: '#e53935', padding: 16 }}>{error}</div>}
-        {!error && <div style={styles.remotePlaceholder}>📞</div>}
-        {isVideo && localStream && (
-          <div style={styles.local}>
+
+      <div style={{ flex: 1, position: 'relative' }}>
+        {error && (
+          <div style={{ padding: 16, textAlign: 'center', color: '#e53935' }}>{error}</div>
+        )}
+        {!error && isVideo && localStream && (
+          <>
+            {remoteStream && <video ref={remoteRef} autoPlay playsInline style={styles.remoteVideo} />}
             <video ref={localRef} autoPlay muted playsInline style={styles.localVideo} />
+          </>
+        )}
+        {!error && (!isVideo || !localStream) && (
+          <div style={styles.center}>
+            <div style={styles.avatar}>{peerName ? peerName[0].toUpperCase() : '?'}</div>
+            <div style={styles.name}>{peerName}</div>
+            <div style={styles.statusText}>{status === 'connected' ? 'Разговор' : 'Вызов...'}</div>
           </div>
         )}
       </div>
+
       <div style={styles.controls}>
-        <button type="button" style={{ ...styles.btn, ...styles.endBtn }} onClick={onEnd} title="Завершить">
-          ✕
+        {controlBtn(muted ? IconMicOff : IconMic, muted, () => setMuted(!muted), muted ? 'Включить микрофон' : 'Выключить микрофон')}
+        {controlBtn(IconSpeaker, speaker, () => setSpeaker(!speaker), speaker ? 'Телефон' : 'Громкая связь')}
+        {controlBtn(IconKeypad, showKeypad, () => setShowKeypad(!showKeypad), 'Клавиатура')}
+        <button type="button" style={styles.endBtn} onClick={onEnd} title="Завершить" aria-label="Завершить звонок">
+          <span style={{ fontSize: 28, lineHeight: 1, color: '#fff' }}>✕</span>
         </button>
       </div>
     </div>

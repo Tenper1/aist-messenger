@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { useUser } from '../context/UserContext';
+import { IconBack, IconSearch } from './Icons';
+import ChannelCreateModal from './ChannelCreateModal';
 import {
   getChatList,
   getMessages,
@@ -121,7 +123,7 @@ function ChatView({ chat, onBack }) {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <header style={styles.header}>
         <button type="button" style={styles.backBtn} onClick={onBack} aria-label="Назад к списку">
-          ←
+          <IconBack width={22} height={22} />
         </button>
         <span style={{ fontWeight: 600, color: theme.text }}>{chat.name}</span>
       </header>
@@ -168,7 +170,7 @@ export default function Chats() {
   const [chatList, setChatList] = useState(getChatList);
   const [selectedChat, setSelectedChat] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [showNewMenu, setShowNewMenu] = useState(false);
+  const [channelModalOpen, setChannelModalOpen] = useState(false);
 
   const refreshList = useCallback(() => setChatList(getChatList()), []);
 
@@ -285,15 +287,24 @@ export default function Chats() {
   }, [selectedChat, refreshList]);
 
   const createNewChat = (type) => {
-    const name = window.prompt(type === 'user' ? 'Введите ник @ или имя' : type === 'group' ? 'Название группы' : 'Название канала');
+    if (type === 'channel') {
+      setChannelModalOpen(true);
+      return;
+    }
+    const name = window.prompt(type === 'user' ? 'Введите ник @ или имя' : 'Название группы');
     if (!name || !name.trim()) return;
     const id = createChat({
       name: name.trim(),
-      type: type === 'user' ? 'user' : type === 'group' ? 'group' : 'channel',
+      type: type === 'user' ? 'user' : 'group',
     });
     refreshList();
-    setSelectedChat(getChatList().find((c) => c.id === id) || { id, name: name.trim(), type, avatar: type === 'channel' ? '📢' : type === 'group' ? '👥' : '👤' });
-    setShowNewMenu(false);
+    setSelectedChat(getChatList().find((c) => c.id === id) || { id, name: name.trim(), type, avatar: type === 'group' ? 'group' : 'user' });
+  };
+
+  const onChannelCreated = (chatId) => {
+    refreshList();
+    const c = getChatList().find((ch) => ch.id === chatId);
+    if (c) setSelectedChat(c);
   };
 
   const isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches;
@@ -301,10 +312,16 @@ export default function Chats() {
 
   return (
     <div style={styles.container}>
+      {channelModalOpen && (
+        <ChannelCreateModal
+          onClose={() => setChannelModalOpen(false)}
+          onCreated={onChannelCreated}
+        />
+      )}
       <div style={{ ...styles.sidebar, display: showListOnly ? 'none' : 'flex' }}>
         <div style={styles.search}>
           <div style={styles.searchWrap}>
-            <span style={styles.atIcon}>@</span>
+            <span style={styles.atIcon}><IconSearch width={16} height={16} /></span>
             <input
               type="text"
               style={styles.searchInput}
@@ -338,7 +355,7 @@ export default function Chats() {
                 ...(selectedChat?.id === chat.id ? styles.chatItemActive : {}),
               }}
             >
-              <div style={styles.avatar}>{chat.avatar || '👤'}</div>
+              <div style={styles.avatar}>{chat.type === 'channel' ? 'C' : chat.type === 'group' ? 'G' : (chat.name && chat.name[0]) || '?'}</div>
               <div style={styles.chatInfo}>
                 <div style={styles.chatName}>{chat.name}</div>
                 <div style={styles.lastMsg}>

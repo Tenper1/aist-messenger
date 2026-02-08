@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { QRCodeSVG } from "qrcode.react";
 import { useTheme } from "../context/ThemeContext";
 
 /**
@@ -422,8 +423,15 @@ export default function Register() {
             type="button"
             style={{
               ...glassStyle.tab,
-              ...glassStyle.tabDisabled,
+              ...(authMethod === "qr" ? glassStyle.tabActive : {}),
             }}
+            onClick={() => setAuthMethod("qr")}
+          >
+            По QR
+          </button>
+          <button
+            type="button"
+            style={{ ...glassStyle.tab, ...glassStyle.tabDisabled }}
             disabled
             title="Скоро"
           >
@@ -432,7 +440,22 @@ export default function Register() {
         </div>
         <div style={glassStyle.divider} />
 
-        {step === "request" && (
+        {authMethod === "qr" && (
+          <div style={glassStyle.field}>
+            <p style={{ ...glassStyle.helper, marginBottom: 12 }}>
+              Вход на другом устройстве по QR. На уже авторизованном устройстве откройте Настройки → «Войти на другом устройстве по QR» и отсканируйте этот код камерой нового устройства.
+            </p>
+            <div style={{ padding: 16, background: theme.inputBg, borderRadius: 14, display: 'inline-block' }}>
+              <QRCodeSVG
+                value={typeof window !== "undefined" ? window.location.origin + "/login" : "https://get-aist.ru/login"}
+                size={200}
+                level="M"
+              />
+            </div>
+          </div>
+        )}
+
+        {authMethod !== "qr" && step === "request" && (
           <>
             <div style={glassStyle.field}>
               <div style={glassStyle.label}>
@@ -479,7 +502,7 @@ export default function Register() {
           </>
         )}
 
-        {step === "verify" && (
+        {authMethod !== "qr" && step === "verify" && (
           <>
             <div style={glassStyle.field}>
               <div style={glassStyle.label}>

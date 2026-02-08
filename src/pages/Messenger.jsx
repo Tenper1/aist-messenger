@@ -4,12 +4,13 @@ import Calls from '../components/Calls';
 import Status from '../components/Status';
 import Settings from '../components/Settings';
 import { useTheme } from '../context/ThemeContext';
+import { IconChats, IconCalls, IconStatus, IconSettings } from '../components/Icons';
 
 const TABS = [
-  { id: 'chats', label: 'Чаты', icon: '💬' },
-  { id: 'calls', label: 'Звонки', icon: '📞' },
-  { id: 'status', label: 'Статус', icon: '✨' },
-  { id: 'settings', label: 'Настройки', icon: '⚙️' },
+  { id: 'chats', label: 'Чаты', Icon: IconChats },
+  { id: 'calls', label: 'Звонки', Icon: IconCalls },
+  { id: 'status', label: 'Истории', Icon: IconStatus },
+  { id: 'settings', label: 'Настройки', Icon: IconSettings },
 ];
 
 export default function Messenger() {
@@ -71,7 +72,6 @@ export default function Messenger() {
       border: 'none',
       background: 'transparent',
       color: theme.textMuted,
-      fontSize: isDesktop ? 22 : 20,
       cursor: 'pointer',
       transition: 'all 0.2s ease',
     },
@@ -107,7 +107,7 @@ export default function Messenger() {
             }}
             aria-current={activeTab === tab.id ? 'page' : undefined}
           >
-            <span aria-hidden="true">{tab.icon}</span>
+            <tab.Icon width={22} height={22} aria-hidden />
             <span style={styles.navLabel}>{tab.label}</span>
           </button>
         ))}

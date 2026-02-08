@@ -58,16 +58,42 @@ export function addOrUpdateChat(chat) {
   return next;
 }
 
-export function createChat({ id, name, type = 'user', avatar }) {
+const CHANNEL_META_PREFIX = 'aist_channel_meta_';
+
+export function getChannelMeta(chatId) {
+  try {
+    const raw = localStorage.getItem(CHANNEL_META_PREFIX + chatId);
+    return raw ? JSON.parse(raw) : { description: '', shareLink: '', admins: [], moderators: [] };
+  } catch {
+    return { description: '', shareLink: '', admins: [], moderators: [] };
+  }
+}
+
+export function saveChannelMeta(chatId, meta) {
+  try {
+    localStorage.setItem(CHANNEL_META_PREFIX + chatId, JSON.stringify(meta));
+  } catch {}
+}
+
+export function createChat({ id, name, type = 'user', avatar, description, shareLink, admins, moderators }) {
   const chatId = id || `chat_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+  const link = shareLink || (type === 'channel' ? `https://get-aist.ru/c/${chatId}` : '');
   addOrUpdateChat({
     id: chatId,
     name: name || 'Чат',
-    type, // 'user' | 'group' | 'channel'
-    avatar: avatar || '👤',
+    type,
+    avatar: avatar || (type === 'channel' ? 'channel' : 'group'),
     lastMessage: '',
     lastTime: null,
     unread: 0,
   });
+  if (type === 'channel') {
+    saveChannelMeta(chatId, {
+      description: description || '',
+      shareLink: link,
+      admins: admins || [],
+      moderators: moderators || [],
+    });
+  }
   return chatId;
 }

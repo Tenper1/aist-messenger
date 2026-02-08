@@ -1,23 +1,16 @@
 /**
- * Зарезервированные никнеймы (без @). Нельзя зарегистрировать для пользователей.
- * @aist — официальный канал/аккаунт сервиса.
+ * Зарезервированные никнеймы (без @). Нельзя зарегистрировать.
+ * Защита от выдачи себя за администрацию и сервис.
  */
 const RESERVED_USERNAMES = new Set([
-  'aist',
-  'admin',
-  'support',
-  'help',
-  'info',
-  'service',
-  'bot',
-  'telegram',
-  'system',
-  'null',
-  'undefined',
-  'moderator',
-  'mod',
-  'official',
-  'root',
+  'aist', 'admin', 'administrator', 'support', 'help', 'info', 'service', 'bot',
+  'telegram', 'system', 'null', 'undefined', 'moderator', 'mod', 'official', 'root',
+  'staff', 'team', 'aist_support', 'aist_admin', 'aist_team', 'aist_official',
+  'moderation', 'service_aist', 'official_aist', 'админ', 'поддержка', 'служба',
+  'техподдержка', 'оператор', 'manager', 'owner', 'creator', 'founder',
+  'security', 'pr', 'press', 'news', 'media', 'contact', 'feedback',
+  'noreply', 'no-reply', 'mail', 'email', 'api', 'www', 'ftp', 'test',
+  'demo', 'guest', 'anonymous', 'user', 'username', 'account',
 ]);
 
 export function isReservedUsername(username) {

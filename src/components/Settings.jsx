@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import { useTheme } from '../context/ThemeContext';
 import { useUser } from '../context/UserContext';
 import { requestNotificationPermission } from '../lib/notifications';
@@ -154,18 +155,18 @@ export default function Settings() {
           />
         </div>
         <div style={styles.row}>
-          <label style={styles.label}>Никнейм (для поиска, например @admin)</label>
+          <label style={styles.label}>Никнейм — только для поиска (в имени не отображается)</label>
           <input
             type="text"
             style={{ ...styles.input, ...(usernameError ? styles.inputError : {}) }}
-            placeholder="@username"
+            placeholder="@ник для поиска"
             value={username ? `@${username}` : ''}
             onChange={(e) => setUsername(e.target.value)}
             maxLength={33}
           />
           {usernameError && <span style={styles.errorText}>{usernameError}</span>}
           {username && !usernameError && (
-            <span style={{ ...styles.label, marginTop: 4 }}>Ваш ник: {usernameFormatted}</span>
+            <span style={{ ...styles.label, marginTop: 4 }}>Поиск по нику: {usernameFormatted}</span>
           )}
         </div>
       </div>
@@ -229,6 +230,25 @@ export default function Settings() {
             <option value="contacts">Только контакты</option>
             <option value="nobody">Никто</option>
           </select>
+        </div>
+      </div>
+
+      <div style={styles.section}>
+        <h3 style={styles.sectionTitle}>QR-код</h3>
+        <div style={{ ...styles.settingItem, flexDirection: 'column', alignItems: 'flex-start', gap: 12 }}>
+          <span style={styles.settingLabel}>Мой QR — добавление в контакты</span>
+          <div style={{ padding: 16, background: '#fff', borderRadius: 12 }}>
+            <QRCodeSVG
+              value={username ? `https://get-aist.ru/add/${username}` : `https://get-aist.ru/me`}
+              size={160}
+              level="M"
+            />
+          </div>
+          <span style={{ ...styles.label, fontSize: 12 }}>Покажите этот код, чтобы вас добавили по нику</span>
+        </div>
+        <div style={{ ...styles.settingItem, flexDirection: 'column', alignItems: 'flex-start', marginTop: 12 }}>
+          <span style={styles.settingLabel}>Войти на другом устройстве по QR</span>
+          <span style={{ ...styles.label, marginTop: 4 }}>Откройте приложение на другом устройстве и отсканируйте QR в разделе «Вход по QR».</span>
         </div>
       </div>
 

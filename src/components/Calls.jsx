@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useTheme } from '../context/ThemeContext';
+import { IconLock } from './Icons';
 
 export default function Calls() {
   const { theme } = useTheme();
@@ -74,7 +75,7 @@ export default function Calls() {
     <div style={styles.container}>
       <h2 style={styles.title}>Звонки</h2>
       <div style={styles.encryptedNote}>
-        <span aria-hidden="true">🔒</span>
+        <IconLock width={18} height={18} style={{ flexShrink: 0 }} />
         <span>Звонки зашифрованы. Участники разговора — только вы и собеседник; подключиться к звонку невозможно.</span>
       </div>
       {calls.length > 0 ? (

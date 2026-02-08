@@ -1,86 +1,112 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { useTheme } from '../context/ThemeContext';
+import { useUser } from '../context/UserContext';
 
 export default function Status() {
   const { theme } = useTheme();
-  const [statuses] = useState(() => [
-    { id: 1, name: 'Анна Иванова', avatar: '👩', time: '2 часа назад', viewed: true },
-    { id: 2, name: 'Иван Петров', avatar: '👨', time: '5 часов назад', viewed: false },
-    { id: 3, name: 'Мария Сидорова', avatar: '👱‍♀️', time: 'Вчера', viewed: true },
-  ]);
+  const { displayName } = useUser();
+
+  const stories = useMemo(() => [
+    { id: '1', name: 'Анна', time: '2 ч', viewed: true },
+    { id: '2', name: 'Иван', time: '5 ч', viewed: false },
+    { id: '3', name: 'Мария', time: 'Вчера', viewed: true },
+  ], []);
 
   const styles = useMemo(
     () => ({
       container: {
-        padding: 24,
+        padding: 20,
         height: '100%',
         overflowY: 'auto',
         color: theme.text,
       },
-      title: { fontSize: 22, fontWeight: 700, marginBottom: 24, color: theme.text },
-      statusList: {
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
+      title: { fontSize: 22, fontWeight: 600, marginBottom: 8, color: theme.text },
+      subtitle: { fontSize: 14, color: theme.textMuted, marginBottom: 24 },
+      myPage: {
+        display: 'flex',
+        alignItems: 'center',
         gap: 16,
-      },
-      statusItem: {
-        padding: 20,
-        borderRadius: 20,
+        padding: 16,
+        borderRadius: 14,
         background: theme.sidebarBg || 'rgba(255,255,255,.06)',
         border: `1px solid ${theme.border}`,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: 12,
-        cursor: 'pointer',
-        transition: 'all 0.2s ease',
+        marginBottom: 24,
       },
       avatar: {
-        width: 72,
-        height: 72,
+        width: 56,
+        height: 56,
         borderRadius: '50%',
         background: theme.accent,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: 36,
         color: theme.accentText,
-        border: `2px solid ${theme.border}`,
-      },
-      statusName: { fontSize: 14, fontWeight: 600, color: theme.text, textAlign: 'center' },
-      statusTime: { fontSize: 12, color: theme.textMuted },
-      emptyState: {
         display: 'flex',
-        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        height: '100%',
-        color: theme.textMuted,
+        fontSize: 20,
+        fontWeight: 600,
       },
-      emptyIcon: { fontSize: 64, marginBottom: 16, opacity: 0.6 },
+      myPageText: { flex: 1 },
+      myPageTitle: { fontSize: 16, fontWeight: 600, marginBottom: 2, color: theme.text },
+      myPageSub: { fontSize: 13, color: theme.textMuted },
+      sectionTitle: { fontSize: 15, fontWeight: 600, marginBottom: 12, color: theme.text },
+      list: { display: 'flex', flexDirection: 'column', gap: 8 },
+      item: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 14,
+        padding: 12,
+        borderRadius: 12,
+        background: theme.sidebarBg || 'rgba(255,255,255,.06)',
+        border: `1px solid ${theme.border}`,
+        cursor: 'pointer',
+      },
+      itemAvatar: {
+        width: 44,
+        height: 44,
+        borderRadius: '50%',
+        background: theme.accent,
+        color: theme.accentText,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: 16,
+        fontWeight: 600,
+      },
+      itemNew: { borderColor: 'rgba(100, 180, 255, .5)', boxShadow: '0 0 0 2px rgba(100, 180, 255, .2)' },
     }),
     [theme]
   );
 
   return (
     <div style={styles.container}>
-      <h2 style={styles.title}>Статусы</h2>
-      {statuses.length > 0 ? (
-        <div style={styles.statusList}>
-          {statuses.map((s) => (
-            <div key={s.id} style={styles.statusItem}>
-              <div style={styles.avatar}>{s.avatar}</div>
-              <div style={styles.statusName}>{s.name}</div>
-              <div style={styles.statusTime}>{s.time}</div>
+      <h2 style={styles.title}>Истории</h2>
+      <p style={styles.subtitle}>Фото и видео на странице, как в современных мессенджерах</p>
+
+      <div style={styles.myPage}>
+        <div style={styles.avatar}>{displayName ? displayName[0].toUpperCase() : '?'}</div>
+        <div style={styles.myPageText}>
+          <div style={styles.myPageTitle}>Моя страница</div>
+          <div style={styles.myPageSub}>Ваши фото, видео и истории видны здесь</div>
+        </div>
+      </div>
+
+      <div style={styles.sectionTitle}>Истории контактов</div>
+      <div style={styles.list}>
+        {stories.map((s) => (
+          <div
+            key={s.id}
+            style={{
+              ...styles.item,
+              ...(s.viewed ? {} : styles.itemNew),
+            }}
+          >
+            <div style={styles.itemAvatar}>{s.name[0]}</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 600, fontSize: 15, color: theme.text }}>{s.name}</div>
+              <div style={{ fontSize: 13, color: theme.textMuted }}>{s.time}</div>
             </div>
-          ))}
-        </div>
-      ) : (
-        <div style={styles.emptyState}>
-          <div style={styles.emptyIcon}>✨</div>
-          <div>Нет статусов</div>
-        </div>
-      )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

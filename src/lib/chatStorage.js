@@ -45,6 +45,17 @@ export function appendMessage(chatId, message) {
   }
 }
 
+/** Записать сообщения чата (при синхронизации с сервера). Храним только на устройстве. */
+export function saveMessages(chatId, list) {
+  const arr = Array.isArray(list) ? list : [];
+  try {
+    localStorage.setItem(getChatKey(chatId), JSON.stringify(arr));
+    return arr;
+  } catch {
+    return getMessages(chatId);
+  }
+}
+
 export function addOrUpdateChat(chat) {
   const list = getChatList();
   const idx = list.findIndex((c) => c.id === chat.id);

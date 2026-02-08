@@ -28,7 +28,8 @@ export default function CallScreen({
   const wsRef = useRef(null);
   const offerSentRef = useRef(false);
   const useSharedWs = isIncoming && !!callCtx;
-  const effectiveWsOpen = useSharedWs ? (callCtx?.wsReady ?? false) : wsOpen;
+  const useCtxForOutgoing = !isIncoming && !!callCtx?.wsReady && !!callCtx?.send;
+  const effectiveWsOpen = useSharedWs || useCtxForOutgoing ? (callCtx?.wsReady ?? false) : wsOpen;
 
   useEffect(() => {
     const wantVideo = !!isVideo;
@@ -69,7 +70,7 @@ export default function CallScreen({
   const token = typeof localStorage !== 'undefined' ? localStorage.getItem('aist_token') : null;
 
   useEffect(() => {
-    if (useSharedWs) return;
+    if (useSharedWs || useCtxForOutgoing) return;
     if (!peerUserId || !wsUrl || !token) return;
     setWsOpen(false);
     const base = wsUrl.startsWith('ws') ? wsUrl : wsUrl.replace(/^https?/, (s) => (s === 'https' ? 'wss' : 'ws'));
@@ -108,7 +109,7 @@ export default function CallScreen({
       setWsOpen(false);
       offerSentRef.current = false;
     };
-  }, [useSharedWs, peerUserId, wsUrl, token, onEnd]);
+  }, [useSharedWs, useCtxForOutgoing, peerUserId, wsUrl, token, onEnd]);
 
   useEffect(() => {
     if (useSharedWs && callCtx && isIncoming && remoteOffer && localStream) {
@@ -145,32 +146,51 @@ export default function CallScreen({
         pcRef.current = null;
       };
     }
-    if (!isIncoming && effectiveWsOpen && !offerSentRef.current && wsRef.current) {
-      const ws = wsRef.current;
+    const sendOffer = (offer) => {
+      if (useCtxForOutgoing && callCtx?.send) {
+        callCtx.send('call:offer', { userId: peerUserId, targetUserId: peerUserId, sdp: offer, isVideo: !!isVideo });
+        offerSentRef.current = true;
+      } else if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ event: 'call:offer', payload: { userId: peerUserId, targetUserId: peerUserId, sdp: offer, isVideo: !!isVideo } }));
+        offerSentRef.current = true;
+      }
+    };
+    if (!isIncoming && effectiveWsOpen && !offerSentRef.current && (wsRef.current || useCtxForOutgoing)) {
+      if (useCtxForOutgoing) {
+        callCtx.setMessageReceiver((msg) => {
+          if (msg.event === 'call:answer' && (msg.payload?.sdp || msg.payload)) {
+            setStatus('connected');
+            const desc = msg.payload?.type ? msg.payload : { type: 'answer', sdp: msg.payload?.sdp || msg.payload };
+            if (pcRef.current) pcRef.current.setRemoteDescription(new RTCSessionDescription(desc)).catch(() => {});
+          }
+          if (msg.event === 'call:ice' && msg.payload?.candidate && pcRef.current) {
+            pcRef.current.addIceCandidate(new RTCIceCandidate(msg.payload.candidate)).catch(() => {});
+          }
+          if (msg.event === 'call:hangup') onEnd();
+        });
+      }
       const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
       pcRef.current = pc;
       localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
       pc.ontrack = (e) => setRemoteStream(e.streams[0] || e.stream);
       pc.onicecandidate = (e) => {
-        if (e.candidate && wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(JSON.stringify({ event: 'call:ice', payload: { candidate: e.candidate } }));
+        if (e.candidate && useCtxForOutgoing && callCtx?.send) callCtx.send('call:ice', { candidate: e.candidate });
+        else if (e.candidate && wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(JSON.stringify({ event: 'call:ice', payload: { candidate: e.candidate } }));
       };
       pc.createOffer()
         .then((offer) => pc.setLocalDescription(offer).then(() => offer))
-        .then((offer) => {
-          if (ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ event: 'call:offer', payload: { userId: peerUserId, sdp: offer, isVideo: !!isVideo } }));
-            offerSentRef.current = true;
-          }
-        })
-        .catch(() => {});
+        .then(sendOffer)
+        .catch(() => setError('Ошибка создания предложения'));
       return () => {
+        if (useCtxForOutgoing) callCtx.setMessageReceiver(null);
         if (pcRef.current === pc) {
           pc.close();
           pcRef.current = null;
         }
+        offerSentRef.current = false;
       };
     }
-  }, [localStream, effectiveWsOpen, wsOpen, peerUserId, isIncoming, remoteOffer, callCtx, isVideo]);
+  }, [localStream, effectiveWsOpen, wsOpen, peerUserId, isIncoming, remoteOffer, callCtx, isVideo, useCtxForOutgoing, onEnd]);
 
   const controlBtn = (Icon, active, onClick, label) => (
     <button

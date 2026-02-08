@@ -9,6 +9,7 @@ import {
   saveChatList,
   getMessages,
   appendMessage,
+  saveMessages,
   addOrUpdateChat,
   createChat,
   getChannelMeta,
@@ -38,16 +39,17 @@ function ChatView({ chat, onBack }) {
   const channelMeta = chat.type === 'channel' ? getChannelMeta(chat.id) : null;
   const channelLink = channelMeta?.shareLink || `${APP_DOMAIN}/c/${chat.id}`;
 
+  // Локальное хранение: сначала показываем с устройства, затем синхронизируем с сервером при открытии
   useEffect(() => {
+    setMessages(getMessages(chat.id));
     let cancelled = false;
     (async () => {
       const fromApi = await apiGetMessages(chat.id);
       if (cancelled) return;
-      if (Array.isArray(fromApi) && fromApi.length >= 0) {
-        setMessages(fromApi);
-        return;
+      if (Array.isArray(fromApi)) {
+        const merged = saveMessages(chat.id, fromApi);
+        setMessages(merged);
       }
-      setMessages(getMessages(chat.id));
     })();
     return () => { cancelled = true; };
   }, [chat.id]);
@@ -57,25 +59,36 @@ function ChatView({ chat, onBack }) {
     const text = isAttach ? textOrAttachment.caption || '' : (textOrAttachment || '').trim();
     const attachment = isAttach ? textOrAttachment : null;
     if (!text && !attachment) return;
-    const fallbackMsg = {
+    const localId = `m_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    const localMsg = {
+      id: localId,
       fromMe: true,
       text: text || (attachment ? (attachment.type === 'image' ? 'Фото' : 'Видео') : ''),
       time: new Date().toISOString(),
       senderName: displayName || 'Вы',
       attachment: attachment ? { type: attachment.type, url: attachment.url } : undefined,
     };
-    const fromApi = await apiSendMessage(chat.id, {
-      text: fallbackMsg.text,
-      attachment: attachment ? { type: attachment.type, url: attachment.url } : null,
-    });
-    const msg = fromApi
-      ? { ...fromApi, senderName: displayName || 'Вы' }
-      : { ...fallbackMsg, id: `m_${Date.now()}_${Math.random().toString(36).slice(2, 9)}` };
-    const next = appendMessage(chat.id, msg);
+    // Сначала сохраняем на устройстве и сразу показываем
+    const next = appendMessage(chat.id, localMsg);
     setMessages(next);
     setInputValue('');
     setAttachPreview(null);
     addOrUpdateChat({ ...chat, lastMessage: text || 'Медиа', lastTime: Date.now() });
+    // Затем отправляем на сервер для синхронизации с другими устройствами
+    const fromApi = await apiSendMessage(chat.id, {
+      text: localMsg.text,
+      attachment: attachment ? { type: attachment.type, url: attachment.url } : null,
+    });
+    if (fromApi && fromApi.id !== localId) {
+      const list = getMessages(chat.id);
+      const idx = list.findIndex((m) => m.id === localId);
+      if (idx >= 0) {
+        const updated = [...list];
+        updated[idx] = { ...list[idx], id: fromApi.id, time: fromApi.time || list[idx].time };
+        saveMessages(chat.id, updated);
+        setMessages(updated);
+      }
+    }
   }, [chat, displayName]);
 
   const MAX_FILE_MB = 16;
@@ -341,12 +354,10 @@ export default function Chats() {
       addOrUpdateChat({ id: created.id, name: created.name || name.trim(), type: 'user', lastMessage: '', lastTime: null, unread: 0, peerUserId: created.peerUserId });
       await refreshList();
       setSelectedChat(created);
+      setNewChatOpen(false);
     } else {
-      const id = createChat({ name: name.trim(), type: 'user' });
-      await refreshList();
-      setSelectedChat(getChatList().find((c) => c.id === id) || { id, name: name.trim(), type: 'user' });
+      window.alert('Пользователь с таким ником не найден. Убедитесь, что он зарегистрирован в AIST и указал никнейм в настройках.');
     }
-    setNewChatOpen(false);
   };
 
   useEffect(() => {

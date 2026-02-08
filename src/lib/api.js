@@ -28,13 +28,19 @@ async function request(method, path, body = null) {
   if (token) opts.headers.Authorization = `Bearer ${token}`;
   if (body != null) opts.body = JSON.stringify(body);
   const res = await fetch(`${API_BASE}${path}`, opts);
+  let json = null;
+  try {
+    const text = await res.text();
+    if (text) json = JSON.parse(text);
+  } catch {}
   if (!res.ok) {
-    const err = new Error(res.statusText || 'Request failed');
+    const err = new Error((json && (json.message || json.error)) || res.statusText || 'Request failed');
     err.status = res.status;
+    err.payload = json;
     throw err;
   }
   if (res.status === 204) return null;
-  return res.json();
+  return json || {};
 }
 
 /** Список чатов с сервера (по userId из токена). При ошибке или без токена — null. */
@@ -58,12 +64,13 @@ export async function apiGetMessages(chatId) {
   }
 }
 
-/** Отправить сообщение на сервер. Возвращает созданное сообщение или null. */
+/** Отправить сообщение на сервер. Возвращает созданное сообщение или null при ошибке. */
 export async function apiSendMessage(chatId, { text, attachment }) {
   if (!getToken() || !chatId) return null;
   try {
     return await request('POST', `/api/chats/${encodeURIComponent(chatId)}/messages`, { text: text || '', attachment: attachment || null });
-  } catch {
+  } catch (e) {
+    if (e?.status === 404) console.warn('Chat not found on server:', chatId);
     return null;
   }
 }

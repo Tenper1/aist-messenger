@@ -1,7 +1,9 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
+import Landing from './pages/Landing';
 import Register from './pages/Register';
 import Messenger from './pages/Messenger';
+import UserAgreement from './pages/UserAgreement';
 
 function PrivateRoute({ children }) {
   const [isAuthenticated, setIsAuthenticated] = useState(null);
@@ -55,21 +57,30 @@ function App() {
 
   return (
     <Routes>
-      <Route 
-        path="/" 
+      <Route
+        path="/"
+        element={
+          <PublicRoute>
+            <Landing />
+          </PublicRoute>
+        }
+      />
+      <Route
+        path="/login"
         element={
           <PublicRoute>
             <Register />
           </PublicRoute>
-        } 
+        }
       />
-      <Route 
-        path="/messenger" 
+      <Route path="/user-agreement" element={<UserAgreement />} />
+      <Route
+        path="/messenger"
         element={
           <PrivateRoute>
             <Messenger />
           </PrivateRoute>
-        } 
+        }
       />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

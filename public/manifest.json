@@ -1,21 +1,15 @@
 {
-  "name": "AIST Messenger",
+  "name": "Artificial Intelligence Solution Technology",
   "short_name": "AIST",
-  "description": "Безопасный мессенджер для России",
+  "description": "Безопасный мессенджер с шифрованием. Чаты на ваших устройствах.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#1e88e5",
+  "orientation": "portrait-primary",
+  "background_color": "#e8eef7",
+  "theme_color": "#7eb8e8",
   "icons": [
-    {
-      "src": "/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    }
-  ]
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "categories": ["social", "communication"]
 }

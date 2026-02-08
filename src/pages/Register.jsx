@@ -1,13 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
+import { useTheme } from "../context/ThemeContext";
 
 /**
  * AIST PWA Messenger — Register/Login screen
- * Auth flow: user requests a one-time code delivered via Telegram bot, then verifies it.
- * Авторизация по номеру телефона (подтверждённому через бота @AIST_SMS_BOT)
+ * Вход по коду из Telegram или (в будущем) по СМС. При входе по коду из ТГ — пользовательское соглашение (законы РФ).
  */
 
-// Base URL для API бэкенда
 const API_BASE_URL = process.env.REACT_APP_API_URL || "https://api.get-aist.ru";
+
+const USER_AGREEMENT_URL = "/user-agreement";
 
 function normalizePhone(input) {
   if (!input) return "";
@@ -68,10 +70,13 @@ async function postJson(url, body, { signal } = {}) {
 }
 
 export default function Register() {
+  const { theme, isDark } = useTheme();
+  const [authMethod, setAuthMethod] = useState("telegram"); // 'telegram' | 'sms' (sms пока заглушка)
   const [step, setStep] = useState("request");
   const [phoneInput, setPhoneInput] = useState("");
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
+  const [agreementAccepted, setAgreementAccepted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [maskedDestination, setMaskedDestination] = useState("");
@@ -90,9 +95,10 @@ export default function Register() {
 
   const canVerify = useMemo(() => {
     if (busy) return false;
+    if (!agreementAccepted) return false;
     const d = digitsOnly(code);
     return d.length >= 4 && d.length <= 8;
-  }, [busy, code]);
+  }, [busy, agreementAccepted, code]);
 
   useEffect(() => {
     return () => {
@@ -154,6 +160,7 @@ export default function Register() {
       setRemaining(typeof data?.ttlSeconds === "number" ? data.ttlSeconds : 300);
       setCooldown(15);
       setCode("");
+      setAgreementAccepted(false);
       setStep("verify");
       setMessage(
         data?.masked
@@ -179,6 +186,10 @@ export default function Register() {
     }
     if (d.length < 4 || d.length > 8) {
       setMessage("Введите код из 4–8 цифр.");
+      return;
+    }
+    if (!agreementAccepted) {
+      setMessage("Необходимо принять пользовательское соглашение.");
       return;
     }
 
@@ -229,29 +240,25 @@ export default function Register() {
     () => ({
       page: {
         minHeight: "100vh",
-        height: "100vh",
         width: "100vw",
         display: "grid",
         placeItems: "center",
-        padding: "0",
-        margin: "0",
-        color: "rgba(255,255,255,.92)",
-        background:
-          "radial-gradient(1200px 800px at 20% 10%, rgba(120, 205, 255, .35), transparent 55%)," +
-          "radial-gradient(900px 700px at 85% 20%, rgba(200, 120, 255, .30), transparent 55%)," +
-          "radial-gradient(900px 700px at 30% 90%, rgba(90, 255, 200, .22), transparent 55%)," +
-          "linear-gradient(135deg, #070A12 0%, #090B18 40%, #09091A 100%)",
+        padding: "20px 0",
+        margin: 0,
+        color: theme.text,
+        background: theme.pageBg,
         backgroundAttachment: "fixed",
         overflow: "auto",
       },
       card: {
         width: "min(460px, 92vw)",
-        borderRadius: "22px",
-        padding: "22px",
-        background: "rgba(255,255,255,.08)",
-        border: "1px solid rgba(255,255,255,.16)",
-        boxShadow:
-          "0 18px 60px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.12)",
+        borderRadius: 22,
+        padding: 22,
+        background: theme.cardBg,
+        border: `1px solid ${theme.cardBorder}`,
+        boxShadow: isDark
+          ? "0 18px 60px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.08)"
+          : "0 20px 60px rgba(80,120,180,.18), inset 0 1px 0 rgba(255,255,255,.7)",
         backdropFilter: "blur(16px) saturate(140%)",
         WebkitBackdropFilter: "blur(16px) saturate(140%)",
         position: "relative",
@@ -260,59 +267,64 @@ export default function Register() {
       shine: {
         position: "absolute",
         inset: "-2px",
-        background:
-          "radial-gradient(500px 240px at 20% 10%, rgba(255,255,255,.20), transparent 60%)," +
-          "radial-gradient(420px 220px at 90% 0%, rgba(255,255,255,.14), transparent 55%)",
+        background: isDark
+          ? "radial-gradient(500px 240px at 20% 10%, rgba(255,255,255,.12), transparent 60%)"
+          : "radial-gradient(400px 200px at 80% 0%, rgba(255,255,255,.4), transparent 55%)",
         pointerEvents: "none",
-        mixBlendMode: "screen",
+        mixBlendMode: "overlay",
       },
-      header: { display: "flex", gap: "12px", alignItems: "center" },
+      header: { display: "flex", gap: 12, alignItems: "center" },
       logo: {
         width: 44,
         height: 44,
         borderRadius: 14,
-        background:
-          "linear-gradient(135deg, rgba(140,200,255,.55), rgba(210,150,255,.35))",
-        border: "1px solid rgba(255,255,255,.22)",
-        boxShadow: "0 10px 30px rgba(0,0,0,.35)",
+        background: theme.accent,
+        border: "1px solid rgba(255,255,255,.35)",
+        boxShadow: "0 8px 24px rgba(0,0,0,.2)",
         display: "grid",
         placeItems: "center",
         fontWeight: 800,
-        letterSpacing: ".5px",
-        color: "rgba(10, 15, 30, .85)",
+        fontSize: 16,
+        color: theme.accentText,
         userSelect: "none",
       },
       titleWrap: { display: "flex", flexDirection: "column" },
-      title: { margin: 0, fontSize: 18, fontWeight: 760, lineHeight: 1.15 },
-      subtitle: {
-        margin: "6px 0 0",
-        fontSize: 13,
-        color: "rgba(255,255,255,.72)",
-        lineHeight: 1.25,
+      title: { margin: 0, fontSize: 18, fontWeight: 700, lineHeight: 1.15, color: theme.text },
+      subtitle: { margin: "6px 0 0", fontSize: 13, color: theme.textMuted, lineHeight: 1.25 },
+      tabs: {
+        display: "flex",
+        gap: 8,
+        marginBottom: 16,
+        borderBottom: `1px solid ${theme.border}`,
+        paddingBottom: 12,
       },
+      tab: {
+        padding: "8px 14px",
+        borderRadius: 12,
+        border: "none",
+        background: "transparent",
+        color: theme.textMuted,
+        fontSize: 14,
+        cursor: "pointer",
+      },
+      tabActive: { color: theme.text, background: theme.sidebarBg || theme.cardBg, fontWeight: 600 },
+      tabDisabled: { opacity: 0.5, cursor: "not-allowed" },
       divider: {
         height: 1,
-        background: "linear-gradient(90deg, transparent, rgba(255,255,255,.18), transparent)",
+        background: `linear-gradient(90deg, transparent, ${theme.border}, transparent)`,
         margin: "16px 0",
       },
       field: { display: "grid", gap: 8, marginTop: 12 },
-      label: {
-        fontSize: 12,
-        color: "rgba(255,255,255,.70)",
-        display: "flex",
-        justifyContent: "space-between",
-        gap: 12,
-      },
-      helper: { fontSize: 12, color: "rgba(255,255,255,.55)" },
+      label: { fontSize: 12, color: theme.textMuted, display: "flex", justifyContent: "space-between", gap: 12 },
+      helper: { fontSize: 12, color: theme.textMuted, opacity: 0.9 },
       input: {
         width: "100%",
         padding: "12px 14px",
         borderRadius: 14,
         outline: "none",
-        color: "rgba(255,255,255,.92)",
-        background: "rgba(10, 14, 28, .40)",
-        border: "1px solid rgba(255,255,255,.14)",
-        boxShadow: "inset 0 1px 0 rgba(255,255,255,.06)",
+        color: theme.text,
+        background: theme.inputBg,
+        border: `1px solid ${theme.inputBorder}`,
         fontSize: 14,
       },
       inputRow: { display: "grid", gridTemplateColumns: "1fr", gap: 10 },
@@ -321,52 +333,61 @@ export default function Register() {
         flex: "1 1 160px",
         padding: "12px 14px",
         borderRadius: 14,
-        border: "1px solid rgba(255,255,255,.18)",
-        color: "rgba(10, 15, 30, .92)",
-        background:
-          "linear-gradient(135deg, rgba(180, 225, 255, .98), rgba(220, 170, 255, .92))",
-        boxShadow: "0 14px 40px rgba(0,0,0,.45)",
-        fontWeight: 750,
+        border: "1px solid rgba(255,255,255,.25)",
+        color: theme.accentText,
+        background: theme.accent,
+        boxShadow: "0 10px 30px rgba(0,0,0,.2)",
+        fontWeight: 600,
         cursor: "pointer",
       },
       secondaryBtn: {
         flex: "1 1 160px",
         padding: "12px 14px",
         borderRadius: 14,
-        border: "1px solid rgba(255,255,255,.16)",
-        color: "rgba(255,255,255,.86)",
-        background: "rgba(255,255,255,.08)",
-        boxShadow: "inset 0 1px 0 rgba(255,255,255,.06)",
+        border: `1px solid ${theme.border}`,
+        color: theme.text,
+        background: theme.sidebarBg || "rgba(255,255,255,.08)",
         cursor: "pointer",
+        fontSize: 14,
       },
       disabled: { opacity: 0.55, cursor: "not-allowed" },
       hintBox: {
         marginTop: 12,
         padding: "10px 12px",
         borderRadius: 14,
-        background: "rgba(255,255,255,.06)",
-        border: "1px solid rgba(255,255,255,.12)",
-        color: "rgba(255,255,255,.78)",
+        background: theme.sidebarBg || "rgba(255,255,255,.06)",
+        border: `1px solid ${theme.border}`,
+        color: theme.textMuted,
         fontSize: 13,
         lineHeight: 1.35,
       },
+      agreementRow: {
+        display: "flex",
+        alignItems: "flex-start",
+        gap: 10,
+        marginTop: 12,
+        marginBottom: 8,
+      },
+      agreementLabel: { fontSize: 13, color: theme.textMuted, lineHeight: 1.4, cursor: "pointer" },
+      agreementLink: { color: theme.text, textDecoration: "underline", marginLeft: 2 },
       footer: {
         marginTop: 14,
         display: "flex",
         justifyContent: "space-between",
         gap: 12,
-        color: "rgba(255,255,255,.58)",
+        color: theme.textMuted,
         fontSize: 12,
         flexWrap: "wrap",
       },
       pill: {
         padding: "6px 10px",
         borderRadius: 999,
-        border: "1px solid rgba(255,255,255,.14)",
-        background: "rgba(255,255,255,.06)",
+        border: `1px solid ${theme.border}`,
+        background: theme.sidebarBg || "rgba(255,255,255,.06)",
       },
+      backLink: { color: theme.textMuted, fontSize: 14, marginTop: 16, display: "block" },
     }),
-    []
+    [theme, isDark]
   );
 
   return (
@@ -386,6 +407,29 @@ export default function Register() {
           </div>
         </div>
 
+        <div style={glassStyle.tabs}>
+          <button
+            type="button"
+            style={{
+              ...glassStyle.tab,
+              ...(authMethod === "telegram" ? glassStyle.tabActive : {}),
+            }}
+            onClick={() => setAuthMethod("telegram")}
+          >
+            По коду из Telegram
+          </button>
+          <button
+            type="button"
+            style={{
+              ...glassStyle.tab,
+              ...glassStyle.tabDisabled,
+            }}
+            disabled
+            title="Скоро"
+          >
+            По СМС (скоро)
+          </button>
+        </div>
         <div style={glassStyle.divider} />
 
         {step === "request" && (
@@ -441,6 +485,23 @@ export default function Register() {
               <div style={glassStyle.label}>
                 <span>Код из Telegram</span>
                 <span style={glassStyle.helper}>для {formatPhone(phone)}</span>
+              </div>
+              <div style={glassStyle.agreementRow}>
+                <input
+                  type="checkbox"
+                  id="agreement"
+                  checked={agreementAccepted}
+                  onChange={(e) => setAgreementAccepted(e.target.checked)}
+                  style={{ marginTop: 4, cursor: "pointer" }}
+                  aria-describedby="agreement-text"
+                />
+                <label id="agreement-text" htmlFor="agreement" style={glassStyle.agreementLabel}>
+                  Я принимаю{" "}
+                  <a href={USER_AGREEMENT_URL} target="_blank" rel="noopener noreferrer" style={glassStyle.agreementLink}>
+                    пользовательское соглашение
+                  </a>{" "}
+                  и условия обработки персональных данных (в соответствии с законодательством РФ).
+                </label>
               </div>
               <input
                 ref={codeInputRef}
@@ -524,6 +585,9 @@ export default function Register() {
             {message}
           </div>
         ) : null}
+        <Link to="/" style={glassStyle.backLink}>
+          ← На главную
+        </Link>
       </div>
     </div>
   );

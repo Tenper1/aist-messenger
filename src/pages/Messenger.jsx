@@ -1,113 +1,124 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Chats from '../components/Chats';
 import Calls from '../components/Calls';
 import Status from '../components/Status';
 import Settings from '../components/Settings';
+import { useTheme } from '../context/ThemeContext';
+
+const TABS = [
+  { id: 'chats', label: 'Чаты', icon: '💬' },
+  { id: 'calls', label: 'Звонки', icon: '📞' },
+  { id: 'status', label: 'Статус', icon: '✨' },
+  { id: 'settings', label: 'Настройки', icon: '⚙️' },
+];
 
 export default function Messenger() {
+  const { theme } = useTheme();
   const [activeTab, setActiveTab] = useState('chats');
+  const [isDesktop, setIsDesktop] = useState(true);
 
-  const glassStyle = useMemo(() => ({
+  useEffect(() => {
+    const m = window.matchMedia('(min-width: 768px)');
+    const update = () => setIsDesktop(m.matches);
+    update();
+    m.addEventListener('change', update);
+    return () => m.removeEventListener('change', update);
+  }, []);
+
+  const styles = useMemo(() => ({
     container: {
       height: '100vh',
       width: '100vw',
       display: 'flex',
-      flexDirection: 'column',
+      flexDirection: isDesktop ? 'row' : 'column',
       margin: 0,
       padding: 0,
       overflow: 'hidden',
-      color: 'rgba(255,255,255,.92)',
-      background:
-        'radial-gradient(1200px 800px at 20% 10%, rgba(120, 205, 255, .35), transparent 55%),' +
-        'radial-gradient(900px 700px at 85% 20%, rgba(200, 120, 255, .30), transparent 55%),' +
-        'radial-gradient(900px 700px at 30% 90%, rgba(90, 255, 200, .22), transparent 55%),' +
-        'linear-gradient(135deg, #070A12 0%, #090B18 40%, #09091A 100%)',
+      color: theme.text,
+      background: theme.pageBg,
       backgroundAttachment: 'fixed',
     },
-    header: {
-      height: '56px',
+    sidebar: {
       display: 'flex',
-      alignItems: 'center',
-      padding: '0 16px',
-      background: 'rgba(255,255,255,.06)',
-      borderBottom: '1px solid rgba(255,255,255,.12)',
+      flexDirection: 'column',
+      width: isDesktop ? 72 : '100%',
+      minWidth: isDesktop ? 72 : undefined,
+      maxWidth: isDesktop ? 72 : undefined,
+      height: isDesktop ? '100%' : 'auto',
+      background: theme.headerBg,
+      borderRight: isDesktop ? `1px solid ${theme.border}` : 'none',
+      borderTop: !isDesktop ? `1px solid ${theme.border}` : 'none',
       backdropFilter: 'blur(20px) saturate(180%)',
       WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-      position: 'relative',
       zIndex: 10,
+      padding: isDesktop ? '12px 0' : '8px 0',
+      alignItems: 'center',
+      gap: isDesktop ? 8 : 0,
+      flexDirection: isDesktop ? 'column' : 'row',
+      justifyContent: isDesktop ? 'flex-start' : 'space-around',
     },
-    logo: {
-      fontSize: '20px',
-      fontWeight: 800,
-      background: 'linear-gradient(135deg, rgba(140,200,255,.9), rgba(210,150,255,.7))',
-      WebkitBackgroundClip: 'text',
-      WebkitTextFillColor: 'transparent',
-      marginRight: '24px',
-    },
-    tabs: {
+    navButton: {
       display: 'flex',
-      gap: '8px',
-      flex: 1,
-    },
-    tab: {
-      padding: '8px 16px',
-      borderRadius: '12px',
-      background: 'transparent',
+      flexDirection: isDesktop ? 'column' : 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      width: isDesktop ? 48 : 'auto',
+      minWidth: isDesktop ? 48 : 56,
+      height: 48,
+      padding: '0 12px',
+      borderRadius: 14,
       border: 'none',
-      color: 'rgba(255,255,255,.6)',
-      fontSize: '14px',
-      fontWeight: 500,
+      background: 'transparent',
+      color: theme.textMuted,
+      fontSize: isDesktop ? 22 : 20,
       cursor: 'pointer',
       transition: 'all 0.2s ease',
-      position: 'relative',
     },
-    tabActive: {
-      color: 'rgba(255,255,255,.95)',
-      background: 'rgba(255,255,255,.1)',
-      boxShadow: '0 2px 8px rgba(0,0,0,.2)',
+    navButtonActive: {
+      background: theme.sidebarBg || 'rgba(255,255,255,.1)',
+      color: theme.text,
+      fontWeight: 600,
+    },
+    navLabel: {
+      fontSize: 11,
+      fontWeight: 500,
     },
     content: {
       flex: 1,
       display: 'flex',
+      flexDirection: 'column',
       overflow: 'hidden',
-      position: 'relative',
+      minHeight: 0,
     },
-  }), []);
-
-  const tabs = [
-    { id: 'chats', label: 'Чаты', icon: '💬' },
-    { id: 'calls', label: 'Звонки', icon: '📞' },
-    { id: 'status', label: 'Статус', icon: '✨' },
-    { id: 'settings', label: 'Настройки', icon: '⚙️' },
-  ];
+  }), [theme, isDesktop]);
 
   return (
-    <div style={glassStyle.container}>
-      <header style={glassStyle.header}>
-        <div style={glassStyle.logo}>AIST</div>
-        <nav style={glassStyle.tabs}>
-          {tabs.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              style={{
-                ...glassStyle.tab,
-                ...(activeTab === tab.id ? glassStyle.tabActive : {}),
-              }}
-            >
-              <span style={{ marginRight: '6px' }}>{tab.icon}</span>
-              {tab.label}
-            </button>
-          ))}
-        </nav>
-      </header>
+    <div style={styles.container}>
+      <nav style={styles.sidebar} aria-label="Навигация">
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setActiveTab(tab.id)}
+            style={{
+              ...styles.navButton,
+              ...(activeTab === tab.id ? styles.navButtonActive : {}),
+            }}
+            aria-current={activeTab === tab.id ? 'page' : undefined}
+          >
+            <span aria-hidden="true">{tab.icon}</span>
+            <span style={styles.navLabel}>{tab.label}</span>
+          </button>
+        ))}
+      </nav>
 
-      <div style={glassStyle.content}>
+      <main style={styles.content} role="main">
         {activeTab === 'chats' && <Chats />}
         {activeTab === 'calls' && <Calls />}
         {activeTab === 'status' && <Status />}
         {activeTab === 'settings' && <Settings />}
-      </div>
+      </main>
     </div>
   );
 }

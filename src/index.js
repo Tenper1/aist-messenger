@@ -1,6 +1,8 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
+import { ThemeProvider } from './context/ThemeContext';
+import { UserProvider } from './context/UserContext';
 import App from './App';
 
 // Глобальные стили для устранения белых пустот
@@ -34,7 +36,11 @@ const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
     <BrowserRouter>
-      <App />
+      <ThemeProvider>
+        <UserProvider>
+          <App />
+        </UserProvider>
+      </ThemeProvider>
     </BrowserRouter>
   </React.StrictMode>
 );

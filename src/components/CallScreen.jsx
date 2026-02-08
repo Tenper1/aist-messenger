@@ -1,22 +1,33 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTheme } from '../context/ThemeContext';
+import { useCall } from '../context/CallContext';
 import { IconBack, IconMic, IconMicOff, IconSpeaker, IconKeypad } from './Icons';
 
-export default function CallScreen({ peerName, isVideo, onEnd, peerUserId }) {
+export default function CallScreen({
+  peerName,
+  isVideo,
+  onEnd,
+  peerUserId,
+  isIncoming = false,
+  remoteOffer = null,
+}) {
   const { theme } = useTheme();
+  const callCtx = useCall();
   const [localStream, setLocalStream] = useState(null);
   const [remoteStream, setRemoteStream] = useState(null);
   const [muted, setMuted] = useState(false);
   const [speaker, setSpeaker] = useState(false);
   const [showKeypad, setShowKeypad] = useState(false);
   const [error, setError] = useState(null);
-  const [status, setStatus] = useState('calling'); // 'calling' | 'connected'
+  const [status, setStatus] = useState(isIncoming ? 'connecting' : 'calling');
   const [wsOpen, setWsOpen] = useState(false);
   const localRef = useRef(null);
   const remoteRef = useRef(null);
   const pcRef = useRef(null);
   const wsRef = useRef(null);
   const offerSentRef = useRef(false);
+  const useSharedWs = isIncoming && !!callCtx;
+  const effectiveWsOpen = useSharedWs ? (callCtx?.wsReady ?? false) : wsOpen;
 
   useEffect(() => {
     const wantVideo = !!isVideo;
@@ -45,6 +56,10 @@ export default function CallScreen({ peerName, isVideo, onEnd, peerUserId }) {
   }, [remoteStream]);
 
   useEffect(() => {
+    if (remoteRef.current) remoteRef.current.volume = speaker ? 1 : 0.6;
+  }, [speaker, remoteStream]);
+
+  useEffect(() => {
     if (muted && localStream) localStream.getAudioTracks().forEach((t) => (t.enabled = false));
     if (!muted && localStream) localStream.getAudioTracks().forEach((t) => (t.enabled = true));
   }, [muted, localStream]);
@@ -53,6 +68,7 @@ export default function CallScreen({ peerName, isVideo, onEnd, peerUserId }) {
   const token = typeof localStorage !== 'undefined' ? localStorage.getItem('aist_token') : null;
 
   useEffect(() => {
+    if (useSharedWs) return;
     if (!peerUserId || !wsUrl || !token) return;
     setWsOpen(false);
     const base = wsUrl.startsWith('ws') ? wsUrl : wsUrl.replace(/^https?/, (s) => (s === 'https' ? 'wss' : 'ws'));
@@ -81,37 +97,78 @@ export default function CallScreen({ peerName, isVideo, onEnd, peerUserId }) {
       setError('WebSocket недоступен');
     }
     return () => {
-      if (pcRef.current) { pcRef.current.close(); pcRef.current = null; }
+      if (pcRef.current) {
+        pcRef.current.close();
+        pcRef.current = null;
+      }
       if (ws && ws.readyState === WebSocket.OPEN) ws.close();
       wsRef.current = null;
       setWsOpen(false);
       offerSentRef.current = false;
     };
-  }, [peerUserId, wsUrl, token, onEnd]);
+  }, [useSharedWs, peerUserId, wsUrl, token, onEnd]);
 
   useEffect(() => {
-    if (!localStream || !wsOpen || !peerUserId || offerSentRef.current || !wsRef.current) return;
-    const ws = wsRef.current;
-    const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
-    pcRef.current = pc;
-    localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
-    pc.ontrack = (e) => setRemoteStream(e.streams[0] || e.stream);
-    pc.onicecandidate = (e) => {
-      if (e.candidate && wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(JSON.stringify({ event: 'call:ice', payload: { candidate: e.candidate } }));
-    };
-    pc.createOffer()
-      .then((offer) => pc.setLocalDescription(offer).then(() => offer))
-      .then((offer) => {
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ event: 'call:offer', payload: { userId: peerUserId, sdp: offer } }));
-          offerSentRef.current = true;
+    if (useSharedWs && callCtx && isIncoming && remoteOffer && localStream) {
+      callCtx.setMessageReceiver((msg) => {
+        if (msg.event === 'call:ice' && msg.payload?.candidate && pcRef.current) {
+          pcRef.current.addIceCandidate(new RTCIceCandidate(msg.payload.candidate)).catch(() => {});
         }
-      })
-      .catch(() => {});
-    return () => {
-      if (pcRef.current === pc) { pc.close(); pcRef.current = null; }
-    };
-  }, [localStream, wsOpen, peerUserId]);
+        if (msg.event === 'call:hangup') onEnd();
+      });
+      return () => callCtx.setMessageReceiver(null);
+    }
+  }, [useSharedWs, isIncoming, remoteOffer, localStream, callCtx, onEnd]);
+
+  useEffect(() => {
+    if (!localStream || !peerUserId) return;
+    if (isIncoming && remoteOffer && callCtx?.wsReady && callCtx.send) {
+      const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+      pcRef.current = pc;
+      localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
+      pc.ontrack = (e) => setRemoteStream(e.streams[0] || e.stream);
+      pc.onicecandidate = (e) => {
+        if (e.candidate && callCtx?.send) callCtx.send('call:ice', { candidate: e.candidate });
+      };
+      pc.setRemoteDescription(new RTCSessionDescription(remoteOffer))
+        .then(() => pc.createAnswer())
+        .then((answer) => pc.setLocalDescription(answer).then(() => answer))
+        .then((answer) => {
+          callCtx.send('call:answer', { sdp: answer });
+          setStatus('connected');
+        })
+        .catch(() => setError('Ошибка соединения'));
+      return () => {
+        pc.close();
+        pcRef.current = null;
+      };
+    }
+    if (!isIncoming && effectiveWsOpen && !offerSentRef.current && wsRef.current) {
+      const ws = wsRef.current;
+      const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+      pcRef.current = pc;
+      localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
+      pc.ontrack = (e) => setRemoteStream(e.streams[0] || e.stream);
+      pc.onicecandidate = (e) => {
+        if (e.candidate && wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(JSON.stringify({ event: 'call:ice', payload: { candidate: e.candidate } }));
+      };
+      pc.createOffer()
+        .then((offer) => pc.setLocalDescription(offer).then(() => offer))
+        .then((offer) => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ event: 'call:offer', payload: { userId: peerUserId, sdp: offer, isVideo: !!isVideo } }));
+            offerSentRef.current = true;
+          }
+        })
+        .catch(() => {});
+      return () => {
+        if (pcRef.current === pc) {
+          pc.close();
+          pcRef.current = null;
+        }
+      };
+    }
+  }, [localStream, effectiveWsOpen, wsOpen, peerUserId, isIncoming, remoteOffer, callCtx, isVideo]);
 
   const controlBtn = (Icon, active, onClick, label) => (
     <button
@@ -241,7 +298,7 @@ export default function CallScreen({ peerName, isVideo, onEnd, peerUserId }) {
           <div style={styles.center}>
             <div style={styles.avatar}>{peerName ? peerName[0].toUpperCase() : '?'}</div>
             <div style={styles.name}>{peerName}</div>
-            <div style={styles.statusText}>{status === 'connected' ? 'Разговор' : 'Вызов...'}</div>
+            <div style={styles.statusText}>{status === 'connected' ? 'Разговор' : isIncoming ? 'Подключение...' : 'Вызов...'}</div>
           </div>
         )}
       </div>
@@ -250,7 +307,7 @@ export default function CallScreen({ peerName, isVideo, onEnd, peerUserId }) {
         {controlBtn(muted ? IconMicOff : IconMic, muted, () => setMuted(!muted), muted ? 'Включить микрофон' : 'Выключить микрофон')}
         {controlBtn(IconSpeaker, speaker, () => setSpeaker(!speaker), speaker ? 'Телефон' : 'Громкая связь')}
         {controlBtn(IconKeypad, showKeypad, () => setShowKeypad(!showKeypad), 'Клавиатура')}
-        <button type="button" style={styles.endBtn} onClick={onEnd} title="Завершить" aria-label="Завершить звонок">
+        <button type="button" style={styles.endBtn} onClick={() => { if (useSharedWs && callCtx) callCtx.send('call:hangup'); onEnd(); }} title="Завершить" aria-label="Завершить звонок">
           <span style={{ fontSize: 28, lineHeight: 1, color: '#fff' }}>✕</span>
         </button>
       </div>

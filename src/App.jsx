@@ -6,6 +6,7 @@ import Messenger from './pages/Messenger';
 import ChannelCreatePage from './pages/ChannelCreatePage';
 import GroupCreatePage from './pages/GroupCreatePage';
 import UserAgreement from './pages/UserAgreement';
+import { CallProvider } from './context/CallContext';
 
 function PrivateRoute({ children }) {
   const [isAuthenticated, setIsAuthenticated] = useState(null);
@@ -76,7 +77,7 @@ function App() {
         }
       />
       <Route path="/user-agreement" element={<UserAgreement />} />
-      <Route path="/messenger" element={<PrivateRoute><div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}><Outlet /></div></PrivateRoute>}>
+      <Route path="/messenger" element={<PrivateRoute><CallProvider><div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}><Outlet /></div></CallProvider></PrivateRoute>}>
         <Route index element={<Messenger />} />
         <Route path="new-channel" element={<ChannelCreatePage />} />
         <Route path="new-group" element={<GroupCreatePage />} />

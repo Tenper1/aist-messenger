@@ -84,6 +84,7 @@ export default function Register() {
   const [ttlSeconds, setTtlSeconds] = useState(null);
   const [remaining, setRemaining] = useState(null);
   const [cooldown, setCooldown] = useState(0);
+  const [debugCode, setDebugCode] = useState(""); // если бэкенд вернул debugCode — показываем для теста
 
   const abortRef = useRef(null);
   const codeInputRef = useRef(null);
@@ -160,14 +161,20 @@ export default function Register() {
       setTtlSeconds(typeof data?.ttlSeconds === "number" ? data.ttlSeconds : 300);
       setRemaining(typeof data?.ttlSeconds === "number" ? data.ttlSeconds : 300);
       setCooldown(15);
-      setCode("");
+      const devCode = data?.debugCode != null ? String(data.debugCode) : "";
+      setDebugCode(devCode);
+      setCode(devCode);
       setAgreementAccepted(false);
       setStep("verify");
-      setMessage(
-        data?.masked
-          ? `Код отправлен в Telegram на номер ${data.masked}.`
-          : "Код отправлен в Telegram-бот @AIST_SMS_BOT. Введите его здесь."
-      );
+      if (devCode) {
+        setMessage("Код для входа (режим разработки): введите его ниже или скопируйте.");
+      } else {
+        setMessage(
+          data?.masked
+            ? `Код отправлен в Telegram на номер ${data.masked}.`
+            : "Код отправлен в Telegram-бот @AIST_SMS_BOT. Введите его здесь."
+        );
+      }
     } catch (err) {
       if (err?.name === "AbortError") return;
       setMessage(err?.message || "Ошибка сети при отправке кода.");
@@ -504,6 +511,12 @@ export default function Register() {
 
         {authMethod !== "qr" && step === "verify" && (
           <>
+            {debugCode && (
+              <div style={{ ...glassStyle.field, padding: "12px 16px", borderRadius: 12, background: "rgba(0,136,204,0.12)", marginBottom: 8 }}>
+                <div style={{ fontSize: 14, color: theme.textMuted, marginBottom: 4 }}>Код для входа (только для теста)</div>
+                <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: 4 }}>{debugCode}</div>
+              </div>
+            )}
             <div style={glassStyle.field}>
               <div style={glassStyle.label}>
                 <span>Код из Telegram</span>

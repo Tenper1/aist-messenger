@@ -348,16 +348,16 @@ export default function Chats() {
   const isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches;
   const showListOnly = isMobile && selectedChat;
 
-  // Стили как в Telegram: сайдбар без тяжёлых границ, компактные строки чатов
+  // Двухколоночный макет: слева — только список чатов, справа — окно чата (как в Telegram Desktop)
   const s = {
-    container: { display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, background: theme.sidebarBg },
+    container: { display: 'flex', flexDirection: 'row', height: '100%', minHeight: 0, background: theme.pageBg },
     header: { height: 54, padding: '0 12px 0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: theme.headerBg },
     headerTitle: { fontSize: 20, fontWeight: 700, color: theme.text },
     search: { padding: '8px 12px 12px' },
     searchInput: { width: '100%', padding: '10px 12px 10px 36px', borderRadius: 20, border: 'none', background: theme.inputBg, color: theme.text, fontSize: 14, outline: 'none' },
     searchWrap: { position: 'relative' },
     searchIcon: { position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: theme.textMuted, pointerEvents: 'none' },
-    sidebar: { width: '100%', maxWidth: 420, minWidth: 280, flexShrink: 0, background: theme.sidebarBg, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' },
+    sidebar: { width: 360, minWidth: 280, maxWidth: 420, flexShrink: 0, background: theme.sidebarBg, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative', borderRight: `1px solid ${theme.border || 'rgba(255,255,255,.06)'}` },
     chatList: { flex: 1, overflowY: 'auto', overflowX: 'hidden' },
     chatItem: { padding: '10px 12px 10px 16px', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', transition: 'background .12s ease', borderBottom: theme.border ? `1px solid ${theme.border}` : '1px solid rgba(255,255,255,.04)' },
     chatItemActive: { background: 'rgba(255,255,255,.08)' },
@@ -378,7 +378,7 @@ export default function Chats() {
 
   if (newChatOpen) {
     return (
-      <div style={s.container}>
+      <div style={{ ...s.container, flexDirection: 'column', width: '100%' }}>
         <header style={s.header}>
           <button type="button" style={{ border: 'none', background: 'transparent', color: theme.accent, padding: 8 }} onClick={() => setNewChatOpen(false)}>
             <IconBack width={24} height={24} />
@@ -414,7 +414,7 @@ export default function Chats() {
 
   return (
     <div style={s.container}>
-      <div style={{ ...s.sidebar, display: showListOnly ? 'none' : 'flex' }}>
+      <div style={{ ...s.sidebar, display: showListOnly ? 'none' : 'flex', ...(isMobile ? { width: '100%', maxWidth: '100%' } : {}) }}>
         <header style={s.header}>
           <span style={s.headerTitle}>Чаты</span>
           <button type="button" style={{ border: 'none', background: 'transparent', color: theme.accent, padding: 8 }} onClick={() => setNewChatOpen(true)} aria-label="Новое сообщение">

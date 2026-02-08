@@ -32,6 +32,9 @@ const globalStyles = `
     touch-action: pan-x pan-y;
     background: #e8eef7;
     color: #0f192d;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    font-feature-settings: "kern" 1, "liga" 1;
+    -webkit-font-smoothing: antialiased;
   }
   #root {
     width: 100%;
@@ -41,6 +44,10 @@ const globalStyles = `
     overflow: hidden;
     position: relative;
   }
+  .scrollable::-webkit-scrollbar { width: 6px; height: 6px; }
+  .scrollable::-webkit-scrollbar-track { background: transparent; }
+  .scrollable::-webkit-scrollbar-thumb { background: rgba(0,0,0,.2); border-radius: 3px; }
+  .scrollable::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,.3); }
 `;
 
 const styleSheet = document.createElement('style');

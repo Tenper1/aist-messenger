@@ -284,7 +284,7 @@ export default function Chats() {
   const s = {
     container: { display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 },
     header: { height: 56, padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1px solid ${theme.border}`, background: theme.headerBg },
-    headerTitle: { fontSize: 22, fontWeight: 600, color: theme.text },
+    headerTitle: { fontSize: 28, fontWeight: 700, color: theme.text, letterSpacing: -0.5 },
     search: { padding: '8px 12px', borderBottom: `1px solid ${theme.border}` },
     searchInput: { width: '100%', padding: '10px 14px 10px 36px', borderRadius: 20, border: 'none', background: theme.inputBg, color: theme.text, fontSize: 15, outline: 'none' },
     searchWrap: { position: 'relative' },
@@ -298,7 +298,19 @@ export default function Chats() {
     chatName: { fontSize: 16, fontWeight: 500, color: theme.text, marginBottom: 2 },
     lastMsg: { fontSize: 14, color: theme.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
     mainArea: { flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: theme.cardBg, backdropFilter: 'saturate(180%) blur(8px)', WebkitBackdropFilter: 'saturate(180%) blur(8px)', borderLeft: theme.border ? `1px solid ${theme.border}` : undefined },
-    empty: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: theme.textMuted, padding: 40, textAlign: 'center' },
+    empty: {
+      flex: 1,
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      color: theme.textMuted,
+      padding: 48,
+      textAlign: 'center',
+    },
+    emptyIconWrap: { width: 64, height: 64, borderRadius: 32, background: theme.sidebarBg || 'rgba(0,0,0,.04)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+    emptyTitle: { fontSize: 17, fontWeight: 600, color: theme.text, marginBottom: 6 },
+    emptySub: { fontSize: 15, lineHeight: 1.4 },
   };
 
   if (newChatOpen) {
@@ -352,7 +364,7 @@ export default function Chats() {
             <input type="text" style={s.searchInput} placeholder="Поиск" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
           </div>
         </div>
-        <div style={s.chatList}>
+        <div className="scrollable" style={s.chatList}>
           {filteredChats.map((chat) => (
             <div
               key={chat.id}
@@ -374,8 +386,11 @@ export default function Chats() {
       <div style={s.mainArea}>
         {selectedChat ? <ChatView chat={selectedChat} onBack={() => setSelectedChat(null)} /> : (
           <div style={s.empty}>
-            <div style={{ fontSize: 48, marginBottom: 12 }}>💬</div>
-            <div style={{ fontSize: 17 }}>Выберите чат или нажмите ✎ для нового</div>
+            <div style={s.emptyIconWrap}>
+              <IconPen width={28} height={28} style={{ color: theme.textMuted }} />
+            </div>
+            <div style={s.emptyTitle}>Выберите чат</div>
+            <div style={s.emptySub}>Или нажмите кнопку с ручкой выше, чтобы начать новый</div>
           </div>
         )}
       </div>

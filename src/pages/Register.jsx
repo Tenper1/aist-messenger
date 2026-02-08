@@ -8,7 +8,7 @@ import { useTheme } from "../context/ThemeContext";
  * Вход по коду из Telegram или (в будущем) по СМС. При входе по коду из ТГ — пользовательское соглашение (законы РФ).
  */
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || "https://api.get-aist.ru";
+const API_BASE_URL = process.env.REACT_APP_API_URL || (typeof window !== "undefined" && window.location?.hostname === "localhost" ? "http://localhost:3001" : "https://api.get-aist.ru");
 
 const USER_AGREEMENT_URL = "/user-agreement";
 
@@ -43,12 +43,22 @@ function digitsOnly(value) {
 }
 
 async function postJson(url, body, { signal } = {}) {
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body ?? {}),
-    signal,
-  });
+  let res;
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body ?? {}),
+      signal,
+    });
+  } catch (e) {
+    if (e.name === "AbortError") throw e;
+    const msg = e.message || "";
+    if (msg.includes("Failed to fetch") || msg.includes("Load failed") || msg.includes("NetworkError")) {
+      throw new Error("Нет связи с сервером. Проверьте интернет и что бэкенд запущен (например http://localhost:3001). В .env задайте REACT_APP_API_URL.");
+    }
+    throw new Error(msg || "Ошибка сети");
+  }
 
   let json = null;
   try {
@@ -177,7 +187,7 @@ export default function Register() {
       }
     } catch (err) {
       if (err?.name === "AbortError") return;
-      setMessage(err?.message || "Ошибка сети при отправке кода.");
+      setMessage(err?.message || "Ошибка сети при отправке кода. Проверьте REACT_APP_API_URL и что бэкенд запущен.");
     } finally {
       setBusy(false);
     }

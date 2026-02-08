@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { useCall } from '../context/CallContext';
+import { getWsUrl } from '../lib/api';
 import { IconBack, IconMic, IconMicOff, IconSpeaker, IconKeypad } from './Icons';
 
 export default function CallScreen({
@@ -64,7 +65,7 @@ export default function CallScreen({
     if (!muted && localStream) localStream.getAudioTracks().forEach((t) => (t.enabled = true));
   }, [muted, localStream]);
 
-  const wsUrl = process.env.REACT_APP_WS_URL;
+  const wsUrl = getWsUrl();
   const token = typeof localStorage !== 'undefined' ? localStorage.getItem('aist_token') : null;
 
   useEffect(() => {
@@ -81,9 +82,10 @@ export default function CallScreen({
       ws.onmessage = (ev) => {
         try {
           const msg = JSON.parse(ev.data);
-          if (msg.event === 'call:answer' && msg.payload?.sdp) {
+          if (msg.event === 'call:answer' && (msg.payload?.sdp || msg.payload)) {
             setStatus('connected');
-            if (pcRef.current) pcRef.current.setRemoteDescription(new RTCSessionDescription(msg.payload)).catch(() => {});
+            const desc = msg.payload?.type ? msg.payload : { type: 'answer', sdp: msg.payload?.sdp || msg.payload };
+            if (pcRef.current) pcRef.current.setRemoteDescription(new RTCSessionDescription(desc)).catch(() => {});
           }
           if (msg.event === 'call:ice' && msg.payload?.candidate) {
             if (pcRef.current) pcRef.current.addIceCandidate(new RTCIceCandidate(msg.payload.candidate)).catch(() => {});

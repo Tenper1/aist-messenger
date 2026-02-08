@@ -18,7 +18,7 @@ const globalStyles = `
     position: fixed;
     -webkit-text-size-adjust: 100%;
     -webkit-tap-highlight-color: transparent;
-    background: #e8eef7;
+    background: #0e1419;
   }
   body {
     margin: 0;
@@ -30,8 +30,8 @@ const globalStyles = `
     overscroll-behavior: none;
     -webkit-overflow-scrolling: touch;
     touch-action: pan-x pan-y;
-    background: #e8eef7;
-    color: #0f192d;
+    background: #0e1419;
+    color: #e4ecf4;
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
     font-feature-settings: "kern" 1, "liga" 1;
     -webkit-font-smoothing: antialiased;

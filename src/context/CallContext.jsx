@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useRef, useEffect, useCallback } from 'react';
+import { getWsUrl } from '../lib/api';
 
 const CallContext = createContext(null);
 
@@ -13,7 +14,7 @@ export function CallProvider({ children }) {
   const wsRef = useRef(null);
   const messageReceiverRef = useRef(null);
 
-  const wsUrl = process.env.REACT_APP_WS_URL;
+  const wsUrl = getWsUrl();
   const token = typeof localStorage !== 'undefined' ? localStorage.getItem('aist_token') : null;
 
   const send = useCallback((event, payload) => {

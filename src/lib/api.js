@@ -2,7 +2,14 @@
  * API для синхронизации чатов и сообщений. Один аккаунт (телефон) — одни чаты на всех устройствах.
  */
 
-const API_BASE = process.env.REACT_APP_API_URL || 'https://api.get-aist.ru';
+const API_BASE = process.env.REACT_APP_API_URL || (typeof window !== 'undefined' && window.location?.hostname === 'localhost' ? 'http://localhost:3001' : 'https://api.get-aist.ru');
+
+/** URL WebSocket для звонков: тот же хост что и API, путь /ws */
+export function getWsUrl() {
+  if (process.env.REACT_APP_WS_URL) return process.env.REACT_APP_WS_URL;
+  const base = API_BASE.replace(/^https?/, (s) => (s === 'https' ? 'wss' : 'ws'));
+  return `${base.replace(/\/$/, '')}/ws`;
+}
 
 function getToken() {
   try {

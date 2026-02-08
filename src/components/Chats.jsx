@@ -363,7 +363,7 @@ export default function Chats() {
     searchInput: { width: '100%', padding: '10px 14px 10px 40px', borderRadius: 22, border: 'none', background: theme.inputBg, color: theme.text, fontSize: 15, outline: 'none' },
     searchWrap: { position: 'relative' },
     searchIcon: { position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: theme.textMuted },
-    sidebar: { width: '100%', maxWidth: 380, minWidth: 260, flexShrink: 0, borderRight: `1px solid ${theme.border}`, background: theme.sidebarBg || theme.headerBg, backdropFilter: 'saturate(180%) blur(12px)', WebkitBackdropFilter: 'saturate(180%) blur(12px)', display: 'flex', flexDirection: 'column', overflow: 'hidden' },
+    sidebar: { width: '100%', maxWidth: 380, minWidth: 260, flexShrink: 0, borderRight: `1px solid ${theme.border}`, background: theme.sidebarBg || theme.headerBg, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' },
     chatList: { flex: 1, overflowY: 'auto' },
     chatItem: { padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 14, cursor: 'pointer', borderBottom: `1px solid ${theme.border}`, transition: 'background 0.15s ease' },
     chatItemActive: { background: theme.isDark ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.04)' },
@@ -449,6 +449,9 @@ export default function Chats() {
           ))}
         </div>
         <div className="scrollable" style={s.chatList}>
+          {chatsByFolder.length === 0 && (
+            <div style={{ padding: 24, textAlign: 'center', color: theme.textMuted, fontSize: 15 }}>Нет чатов в этой папке</div>
+          )}
           {chatsByFolder.map((chat) => (
             <div
               key={chat.id}
@@ -496,6 +499,32 @@ export default function Chats() {
             </div>
           ))}
         </div>
+        <button
+          type="button"
+          aria-label="Новое сообщение"
+          onClick={() => setNewChatOpen(true)}
+          style={{
+            position: 'absolute',
+            bottom: 24,
+            right: 20,
+            width: 56,
+            height: 56,
+            borderRadius: 28,
+            border: 'none',
+            background: theme.accent,
+            color: theme.accentText || '#fff',
+            boxShadow: '0 4px 16px rgba(0,0,0,.25)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,.3)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,.25)'; }}
+        >
+          <IconPen width={26} height={26} />
+        </button>
       </div>
       <div style={s.mainArea}>
         {selectedChat ? <ChatView chat={selectedChat} onBack={() => setSelectedChat(null)} /> : (

@@ -23,21 +23,21 @@ const glassLight = {
 };
 
 const glassDark = {
-  pageBg: 'linear-gradient(165deg, #0e1218 0%, #151b24 50%, #0f141a 100%)',
-  text: 'rgba(255,255,255,.94)',
-  textMuted: 'rgba(165, 180, 210, .75)',
-  cardBg: 'rgba(26, 34, 48, .92)',
+  pageBg: '#0e1419',
+  text: '#e4ecf4',
+  textMuted: 'rgba(180, 198, 220, .75)',
+  cardBg: '#17212b',
   cardBorder: 'rgba(255,255,255,.06)',
-  inputBg: 'rgba(22, 30, 44, .95)',
+  inputBg: '#242f3d',
   inputBorder: 'rgba(255,255,255,.1)',
-  accent: '#6ab3f3',
+  accent: '#5288c1',
   accentText: '#ffffff',
-  headerBg: 'rgba(20, 28, 40, .95)',
-  sidebarBg: 'rgba(18, 25, 36, .98)',
+  headerBg: '#17212b',
+  sidebarBg: '#17212b',
   border: 'rgba(255,255,255,.08)',
-  bubbleIn: 'rgba(38, 48, 68, .95)',
-  bubbleOut: 'rgba(70, 130, 200, .92)',
-  tabBarBg: 'rgba(20, 28, 40, .98)',
+  bubbleIn: '#2b5278',
+  bubbleOut: '#1e3a5f',
+  tabBarBg: '#17212b',
 };
 
 const themes = {
@@ -59,9 +59,9 @@ const ThemeContext = createContext(null);
 export function ThemeProvider({ children }) {
   const [themeId, setThemeIdState] = useState(() => {
     try {
-      return localStorage.getItem(STORAGE_KEY) || 'light';
+      return localStorage.getItem(STORAGE_KEY) || 'dark';
     } catch {
-      return 'light';
+      return 'dark';
     }
   });
   const [chatBg, setChatBgState] = useState(() => {

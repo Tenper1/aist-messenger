@@ -68,7 +68,7 @@ export async function apiSendMessage(chatId, { text, attachment }) {
   }
 }
 
-/** Создать чат на сервере. Возвращает чат или null. */
+/** Создать чат на сервере. Возвращает чат или null. Для личного чата передайте peerUsername или peerUserId. */
 export async function apiCreateChat(payload) {
   if (!getToken()) return null;
   try {
@@ -76,6 +76,8 @@ export async function apiCreateChat(payload) {
       name: payload.name || 'Чат',
       type: payload.type || 'user',
       photo: payload.photo || null,
+      peerUsername: payload.peerUsername || null,
+      peerUserId: payload.peerUserId || null,
       description: payload.description || null,
       shareLink: payload.shareLink || null,
       admins: payload.admins || [],

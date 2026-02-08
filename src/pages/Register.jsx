@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
 import { useTheme } from "../context/ThemeContext";
 
@@ -94,10 +94,18 @@ export default function Register() {
   const [ttlSeconds, setTtlSeconds] = useState(null);
   const [remaining, setRemaining] = useState(null);
   const [cooldown, setCooldown] = useState(0);
-  const [debugCode, setDebugCode] = useState(""); // если бэкенд вернул debugCode — показываем для теста
+  const [debugCode, setDebugCode] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const confirmQrCode = searchParams.get("confirm-qr") || "";
+  const [qrCode, setQrCode] = useState("");
+  const [qrStatus, setQrStatus] = useState("");
+  const [qrConfirming, setQrConfirming] = useState(false);
+  const [qrConfirmed, setQrConfirmed] = useState(false);
+  const token = typeof window !== "undefined" ? localStorage.getItem("aist_token") : null;
 
   const abortRef = useRef(null);
   const codeInputRef = useRef(null);
+  const qrPollRef = useRef(null);
 
   const canRequest = useMemo(() => {
     if (busy) return false;
@@ -136,6 +144,52 @@ export default function Register() {
     const t = setTimeout(() => codeInputRef.current?.focus?.(), 50);
     return () => clearTimeout(t);
   }, [step]);
+
+  // QR: запрос кода при открытии вкладки «По QR» (на ПК)
+  useEffect(() => {
+    if (authMethod !== "qr" || confirmQrCode) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/auth/qr/request`, { method: "POST" });
+        const data = await res.json();
+        if (cancelled || !data?.code) return;
+        setQrCode(data.code);
+        setQrStatus("pending");
+      } catch {
+        setQrStatus("error");
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [authMethod, confirmQrCode]);
+
+  // QR: опрос готовности (на ПК)
+  useEffect(() => {
+    if (!qrCode || qrStatus !== "pending") return;
+    const poll = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/auth/qr/check?code=${encodeURIComponent(qrCode)}`);
+        const data = await res.json();
+        if (data?.status === "ready" && data?.token) {
+          localStorage.setItem("aist_token", data.token);
+          window.location.assign("/messenger");
+          return;
+        }
+        if (data?.status === "expired") setQrStatus("expired");
+      } catch {}
+    };
+    poll();
+    const id = setInterval(poll, 2000);
+    qrPollRef.current = id;
+    return () => clearInterval(id);
+  }, [qrCode, qrStatus]);
+
+  // Сброс опроса при смене вкладки
+  useEffect(() => {
+    if (authMethod !== "qr") {
+      if (qrPollRef.current) clearInterval(qrPollRef.current);
+    }
+  }, [authMethod]);
 
   async function requestCode() {
     setMessage("");
@@ -420,7 +474,10 @@ export default function Register() {
           <div style={glassStyle.titleWrap}>
             <h1 style={glassStyle.title}>AIST</h1>
             <p style={glassStyle.subtitle}>
-              Вход по коду из Telegram-бота @AIST_SMS_BOT
+              Вход по коду из Telegram-бота{" "}
+              <a href="https://t.me/AIST_SMS_BOT" target="_blank" rel="noopener noreferrer" style={{ color: theme.accent, textDecoration: 'none', fontWeight: 600 }}>
+                @AIST_SMS_BOT
+              </a>
             </p>
           </div>
         </div>
@@ -457,22 +514,78 @@ export default function Register() {
         </div>
         <div style={glassStyle.divider} />
 
-        {authMethod === "qr" && (
+        {confirmQrCode ? (
+          <div style={glassStyle.field}>
+            {token ? (
+              <>
+                <p style={{ ...glassStyle.helper, marginBottom: 12 }}>
+                  Подтвердите вход на другом устройстве (ПК). После подтверждения чаты синхронизируются.
+                </p>
+                {qrConfirmed ? (
+                  <p style={{ color: theme.accent, fontWeight: 600 }}>Готово. Можете закрыть эту вкладку.</p>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={qrConfirming}
+                    style={glassStyle.primaryBtn}
+                    onClick={async () => {
+                      setQrConfirming(true);
+                      try {
+                        const res = await fetch(`${API_BASE_URL}/api/auth/qr/confirm`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                          body: JSON.stringify({ code: confirmQrCode }),
+                        });
+                        const data = await res.json();
+                        if (data?.ok) setQrConfirmed(true);
+                        else setMessage(data?.message || "Ошибка подтверждения");
+                      } catch (e) {
+                        setMessage(e?.message || "Ошибка сети");
+                      }
+                      setQrConfirming(false);
+                    }}
+                  >
+                    {qrConfirming ? "Отправка…" : "Подтвердить вход на ПК"}
+                  </button>
+                )}
+              </>
+            ) : (
+              <>
+                <p style={{ ...glassStyle.helper, marginBottom: 12 }}>
+                  Сначала войдите в аккаунт на этом устройстве, затем подтвердите вход на ПК.
+                </p>
+                <Link to="/login" style={glassStyle.link}>Перейти к входу</Link>
+              </>
+            )}
+          </div>
+        ) : authMethod === "qr" ? (
           <div style={glassStyle.field}>
             <p style={{ ...glassStyle.helper, marginBottom: 12 }}>
-              Вход на другом устройстве по QR. На уже авторизованном устройстве откройте Настройки → «Войти на другом устройстве по QR» и отсканируйте этот код камерой нового устройства.
+              Откройте эту страницу на телефоне (уже войдя в аккаунт) или отсканируйте QR камерой — затем на телефоне нажмите «Подтвердить вход на ПК».
             </p>
-            <div style={{ padding: 16, background: theme.inputBg, borderRadius: 14, display: 'inline-block' }}>
-              <QRCodeSVG
-                value={typeof window !== "undefined" ? window.location.origin + "/login" : "https://get-aist.ru/login"}
-                size={200}
-                level="M"
-              />
-            </div>
+            {qrCode ? (
+              <>
+                <div style={{ padding: 16, background: theme.inputBg, borderRadius: 14, display: "inline-block", marginBottom: 12 }}>
+                  <QRCodeSVG
+                    value={typeof window !== "undefined" ? `${window.location.origin}${window.location.pathname || "/login"}?confirm-qr=${qrCode}` : ""}
+                    size={200}
+                    level="M"
+                  />
+                </div>
+                <p style={{ fontSize: 14, color: theme.textMuted, marginBottom: 8 }}>Код: <strong style={{ letterSpacing: 2 }}>{qrCode}</strong></p>
+                <p style={{ fontSize: 13, color: theme.textMuted }}>
+                  {qrStatus === "pending" && "Ожидание подтверждения на телефоне…"}
+                  {qrStatus === "expired" && "Код истёк. Обновите страницу для нового кода."}
+                  {qrStatus === "error" && "Не удалось получить код. Проверьте связь с сервером."}
+                </p>
+              </>
+            ) : (
+              <p style={{ color: theme.textMuted }}>{qrStatus === "error" ? "Ошибка загрузки кода" : "Загрузка кода…"}</p>
+            )}
           </div>
-        )}
+        ) : null}
 
-        {authMethod !== "qr" && step === "request" && (
+        {!confirmQrCode && authMethod !== "qr" && step === "request" && (
           <>
             <div style={glassStyle.field}>
               <div style={glassStyle.label}>
@@ -510,16 +623,19 @@ export default function Register() {
             </div>
 
             <div style={glassStyle.hintBox}>
-              <b>Важно:</b> Сначала активируйте бота <b>@AIST_SMS_BOT</b> в Telegram:
-              <br />1. Найдите бота <b>@AIST_SMS_BOT</b>
-              <br />2. Нажмите <b>/start</b>
-              <br />3. Отправьте номер телефона через кнопку
-              <br />4. После этого введите номер здесь и запросите код
+              <b>Важно:</b> Сначала откройте бота в Telegram и активируйте номер:
+              <br />1. Нажмите:{" "}
+              <a href="https://t.me/AIST_SMS_BOT" target="_blank" rel="noopener noreferrer" style={{ color: theme.accent, fontWeight: 600 }}>
+                Открыть бота @AIST_SMS_BOT
+              </a>
+              <br />2. В боте нажмите <b>/start</b>
+              <br />3. Отправьте номер телефона через кнопку в боте
+              <br />4. Затем введите номер здесь и нажмите «Получить код»
             </div>
           </>
         )}
 
-        {authMethod !== "qr" && step === "verify" && (
+        {!confirmQrCode && authMethod !== "qr" && step === "verify" && (
           <>
             {debugCode && (
               <div style={{ ...glassStyle.field, padding: "12px 16px", borderRadius: 12, background: "rgba(0,136,204,0.12)", marginBottom: 8 }}>

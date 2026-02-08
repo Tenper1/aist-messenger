@@ -2,23 +2,33 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 
 const styles = {
+  root: {
+    minHeight: '100vh',
+    overflowY: 'auto',
+    overflowX: 'hidden',
+    WebkitOverflowScrolling: 'touch',
+    background: '#f5f5f7',
+  },
   wrap: {
     padding: '24px 20px 48px',
     maxWidth: 720,
     margin: '0 auto',
     lineHeight: 1.6,
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-    color: '#1a1a1a',
+    color: '#1d1d1f',
+    background: '#f5f5f7',
   },
-  h1: { fontSize: 28, fontWeight: 700, marginBottom: 24 },
-  h2: { fontSize: 18, fontWeight: 600, marginTop: 28, marginBottom: 10 },
-  p: { margin: '0 0 12px', fontSize: 15 },
-  link: { color: '#0a84ff', textDecoration: 'none' },
-  back: { display: 'inline-block', marginTop: 32, fontSize: 15 },
+  h1: { fontSize: 28, fontWeight: 700, marginBottom: 24, color: '#1d1d1f' },
+  h2: { fontSize: 18, fontWeight: 600, marginTop: 28, marginBottom: 10, color: '#1d1d1f' },
+  p: { margin: '0 0 12px', fontSize: 15, color: '#1d1d1f' },
+  link: { color: '#0066cc', textDecoration: 'none' },
+  linkHover: { textDecoration: 'underline' },
+  back: { display: 'inline-block', marginTop: 32, fontSize: 15, color: '#0066cc' },
 };
 
 export default function UserAgreement() {
   return (
+    <div style={styles.root}>
     <div style={styles.wrap}>
       <h1 style={styles.h1}>Пользовательское соглашение</h1>
       <p style={styles.p}>
@@ -101,6 +111,7 @@ export default function UserAgreement() {
       <p style={styles.back}>
         <Link to="/login" style={styles.link}>← Вернуться к входу</Link>
       </p>
+    </div>
     </div>
   );
 }

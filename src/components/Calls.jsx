@@ -1,14 +1,18 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { useTheme } from '../context/ThemeContext';
-import { IconLock, IconPhone, IconPhoneOutgoing, IconPhoneIncoming, IconPhoneMissed } from './Icons';
+import { IconLock, IconPhone, IconPhoneIncoming, IconPhoneOutgoing, IconPhoneMissed } from './Icons';
 
 export default function Calls() {
   const { theme } = useTheme();
-  const [calls] = useState(() => [
-    { id: 1, name: 'Анна Иванова', time: 'Сегодня, 14:30', type: 'outgoing', missed: false },
-    { id: 2, name: 'Иван Петров', time: 'Вчера, 12:15', type: 'incoming', missed: true },
-    { id: 3, name: 'Мария Сидорова', time: '2 дня назад', type: 'outgoing', missed: false },
-  ]);
+  // История звонков будет подгружаться с сервера (API /api/calls)
+  const calls = [];
+
+  const CallTypeIcon = ({ type, missed }) => {
+    if (missed) return <IconPhoneMissed width={16} height={16} style={{ color: '#e53935' }} />;
+    return type === 'incoming'
+      ? <IconPhoneIncoming width={16} height={16} />
+      : <IconPhoneOutgoing width={16} height={16} />;
+  };
 
   const styles = useMemo(
     () => ({
@@ -106,6 +110,7 @@ export default function Calls() {
             <IconPhone width={26} height={26} style={{ color: theme.textMuted }} />
           </div>
           <div style={styles.emptyText}>Нет истории звонков</div>
+          <div style={{ fontSize: 14, color: theme.textMuted, marginTop: 8 }}>Звонки через мессенджер будут отображаться здесь</div>
         </div>
       )}
     </div>

@@ -302,6 +302,13 @@ export default function Chats() {
     refreshList();
   }, [refreshList]);
 
+  // Синхронизация при возврате на вкладку (другое устройство могло отправить сообщения)
+  useEffect(() => {
+    const onVisible = () => refreshList();
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [refreshList]);
+
   const filteredChats = useMemo(() => {
     const q = searchQuery.trim().toLowerCase().replace(/^@/, '');
     if (!q) return chatList;
@@ -326,11 +333,12 @@ export default function Chats() {
       navigate('/messenger/new-group');
       return;
     }
-    const name = window.prompt('Введите ник @ или имя');
+    const name = window.prompt('Введите ник @ или имя пользователя');
     if (!name?.trim()) return;
-    const created = await apiCreateChat({ name: name.trim(), type: 'user' });
+    const peerUsername = name.trim().replace(/^@/, '');
+    const created = await apiCreateChat({ name: name.trim(), type: 'user', peerUsername });
     if (created?.id) {
-      addOrUpdateChat({ id: created.id, name: created.name || name.trim(), type: 'user', lastMessage: '', lastTime: null, unread: 0 });
+      addOrUpdateChat({ id: created.id, name: created.name || name.trim(), type: 'user', lastMessage: '', lastTime: null, unread: 0, peerUserId: created.peerUserId });
       await refreshList();
       setSelectedChat(created);
     } else {

@@ -7,13 +7,6 @@ export default function Calls() {
   // История звонков будет подгружаться с сервера (API /api/calls)
   const calls = [];
 
-  const CallTypeIcon = ({ type, missed }) => {
-    if (missed) return <IconPhoneMissed width={16} height={16} style={{ color: '#e53935' }} />;
-    return type === 'incoming'
-      ? <IconPhoneIncoming width={16} height={16} />
-      : <IconPhoneOutgoing width={16} height={16} />;
-  };
-
   const styles = useMemo(
     () => ({
       container: {

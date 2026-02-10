@@ -4,11 +4,13 @@ import { useTheme } from '../context/ThemeContext';
 import { useUser } from '../context/UserContext';
 import { requestNotificationPermission } from '../lib/notifications';
 import { getFolders, addFolder, updateFolder, deleteFolder } from '../lib/folderStorage';
-import { IconBack, IconChevronRight, IconCamera } from './Icons';
+import { IconBack, IconChevronRight, IconCamera, IconLock } from './Icons';
+import E2ESetup from './E2ESetup';
 
 const SECTIONS = [
   { id: 'notifications', title: 'Уведомления' },
   { id: 'privacy', title: 'Конфиденциальность' },
+  { id: 'e2e', title: 'Шифрование (E2E)', icon: IconLock },
   { id: 'appearance', title: 'Внешний вид' },
   { id: 'folders', title: 'Папки чатов' },
   { id: 'qr', title: 'QR-код' },
@@ -204,6 +206,9 @@ export default function Settings() {
         {view === 'folders' && (
           <FoldersView theme={theme} base={base} onBack={() => setView('main')} />
         )}
+        {view === 'e2e' && (
+          <E2ESetup onClose={() => setView('main')} />
+        )}
         {view === 'qr' && (
           <div style={{ padding: 16, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <div style={base.rowLabel}>Мой QR для контактов</div>
@@ -233,7 +238,10 @@ export default function Settings() {
       <div style={base.sectionTitle}>Настройки</div>
       {SECTIONS.map((s) => (
         <div key={s.id} style={base.row} onClick={() => setView(s.id)}>
-          <span style={base.rowLabel}>{s.title}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {s.icon && <s.icon width={20} height={20} style={{ color: theme.textMuted }} />}
+            <span style={base.rowLabel}>{s.title}</span>
+          </div>
           <IconChevronRight width={20} height={20} style={{ color: theme.textMuted }} />
         </div>
       ))}

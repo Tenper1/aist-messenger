@@ -94,3 +94,24 @@ export async function apiCreateChat(payload) {
     return null;
   }
 }
+
+/** Получить публичный ключ пользователя */
+export async function apiGetPublicKey(userId) {
+  if (!getToken() || !userId) return null;
+  try {
+    const res = await request('GET', `/api/users/${encodeURIComponent(userId)}/public-key`);
+    return res?.publicKey || null;
+  } catch {
+    return null;
+  }
+}
+
+/** Сохранить свой публичный ключ на сервере */
+export async function apiSetPublicKey(publicKeyPem) {
+  if (!getToken()) return null;
+  try {
+    return await request('POST', '/api/profile/public-key', { publicKey: publicKeyPem });
+  } catch {
+    return null;
+  }
+}

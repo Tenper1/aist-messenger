@@ -1,0 +1,32 @@
+# systemd-сервис для автозапуска бэкенда при загрузке и перезапуска при падении.
+#
+# Установка на сервере:
+#   1. Скопировать файл: sudo cp aist-backend.service /etc/systemd/system/
+#   2. В файле заменить /root/aist-backend на реальный путь к папке бэкенда.
+#   3. Один раз установить зависимости: cd /root/aist-backend && npm install
+#   4. Создать .env в этой папке (см. env.txt).
+#   5. Включить и запустить:
+#      sudo systemctl daemon-reload
+#      sudo systemctl enable aist-backend
+#      sudo systemctl start aist-backend
+#      sudo systemctl status aist-backend
+#
+# Просмотр логов: journalctl -u aist-backend -f
+
+[Unit]
+Description=AIST Messenger Backend (API + WebSocket)
+After=network.target postgresql.service redis.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/aist-backend
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

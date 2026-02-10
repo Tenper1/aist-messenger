@@ -31,11 +31,11 @@ function ChatView({ chat, onBack }) {
   const [showChannelInfo, setShowChannelInfo] = useState(false);
   const isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches;
   const messagesAreaBg = chatBg || (theme.isDark
-    ? '#0e1621'
-    : '#e8ecf1');
+    ? '#0f1419'
+    : '#e6ebee');
   const messagesAreaPattern = theme.isDark
-    ? 'radial-gradient(circle at 1px 1px, rgba(255,255,255,.03) 1px, transparent 0); background-size: 24px 24px'
-    : 'radial-gradient(circle at 1px 1px, rgba(0,0,0,.04) 1px, transparent 0); background-size: 24px 24px';
+    ? 'radial-gradient(circle at 1px 1px, rgba(255,255,255,.035) 1px, transparent 0); background-size: 28px 28px'
+    : 'radial-gradient(circle at 1px 1px, rgba(0,0,0,.035) 1px, transparent 0); background-size: 28px 28px';
   const channelMeta = chat.type === 'channel' ? getChannelMeta(chat.id) : null;
   const channelLink = channelMeta?.shareLink || `${APP_DOMAIN}/c/${chat.id}`;
 
@@ -110,22 +110,25 @@ function ChatView({ chat, onBack }) {
     }
   };
 
-  const bubbleIn = theme.bubbleIn || theme.sidebarBg;
+  const bubbleIn = theme.bubbleIn || (theme.isDark ? '#182533' : '#ffffff');
   const bubbleOut = theme.bubbleOut || theme.accent;
   const bubbleStyleIn = {
-    padding: '8px 12px 6px 12px',
-    borderRadius: '12px 12px 12px 4px',
+    padding: '10px 14px 8px 14px',
+    borderRadius: '18px 18px 18px 6px',
     background: bubbleIn,
     color: theme.text,
     fontSize: 15,
-    lineHeight: 1.35,
+    lineHeight: 1.4,
     maxWidth: '100%',
+    boxShadow: theme.isDark ? '0 1px 2px rgba(0,0,0,0.3)' : '0 1px 2px rgba(0,0,0,0.1)',
+    backdropFilter: 'blur(10px)',
   };
   const bubbleStyleOut = {
     ...bubbleStyleIn,
-    borderRadius: '12px 12px 4px 12px',
+    borderRadius: '18px 18px 6px 18px',
     background: bubbleOut,
     color: theme.accentText || '#fff',
+    boxShadow: '0 2px 8px rgba(0,136,204,0.3)',
   };
 
   const formatDateKey = (t) => new Date(t).toDateString();
@@ -145,18 +148,18 @@ function ChatView({ chat, onBack }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <header style={{ height: 54, padding: '0 8px 0 4px', display: 'flex', alignItems: 'center', gap: 8, background: theme.headerBg, borderBottom: '1px solid rgba(255,255,255,.06)' }}>
-        <button type="button" style={{ border: 'none', background: 'transparent', color: theme.accent, padding: 10, cursor: 'pointer', display: isMobile ? 'flex' : 'none', alignItems: 'center', justifyContent: 'center' }} onClick={onBack} aria-label="Назад">
+      <header style={{ height: 58, padding: '0 12px 0 4px', display: 'flex', alignItems: 'center', gap: 8, background: theme.headerBg, backdropFilter: 'blur(20px)', borderBottom: `1px solid ${theme.border || 'rgba(255,255,255,0.08)'}` }}>
+        <button type="button" style={{ border: 'none', background: 'transparent', color: theme.accent, padding: 12, cursor: 'pointer', display: isMobile ? 'flex' : 'none', alignItems: 'center', justifyContent: 'center', borderRadius: 8, transition: 'background 0.15s ease' }} onClick={onBack} aria-label="Назад">
           <IconBack width={24} height={24} />
         </button>
-        <button type="button" onClick={() => chat.type === 'channel' && setShowChannelInfo(true)} style={{ flex: 1, border: 'none', background: 'transparent', padding: '8px 4px', cursor: chat.type === 'channel' ? 'pointer' : 'default', textAlign: 'left', minWidth: 0 }}>
-          <span style={{ fontWeight: 600, fontSize: 16, color: theme.text, display: 'block' }}>{chat.name}</span>
-          {chat.type !== 'channel' && <span style={{ fontSize: 13, color: theme.textMuted, fontWeight: 400 }}>был(а) недавно</span>}
+        <button type="button" onClick={() => chat.type === 'channel' && setShowChannelInfo(true)} style={{ flex: 1, border: 'none', background: 'transparent', padding: '10px 6px', cursor: chat.type === 'channel' ? 'pointer' : 'default', textAlign: 'left', minWidth: 0, borderRadius: 8, transition: 'background 0.15s ease' }}>
+          <span style={{ fontWeight: 700, fontSize: 17, color: theme.text, display: 'block', letterSpacing: '-0.3px' }}>{chat.name}</span>
+          {chat.type !== 'channel' && <span style={{ fontSize: 13, color: theme.textMuted, fontWeight: 500 }}>был(а) недавно</span>}
         </button>
         {chat.type !== 'channel' && (
           <>
-            <button type="button" style={{ border: 'none', background: 'transparent', padding: 10, color: theme.textMuted, cursor: 'pointer' }} aria-label="Голосовой звонок" onClick={() => setCallMode('voice')}><IconPhone width={22} height={22} /></button>
-            <button type="button" style={{ border: 'none', background: 'transparent', padding: 10, color: theme.textMuted, cursor: 'pointer' }} aria-label="Видеозвонок" onClick={() => setCallMode('video')}><IconVideo width={22} height={22} /></button>
+            <button type="button" style={{ border: 'none', background: 'transparent', padding: 12, color: theme.textMuted, cursor: 'pointer', borderRadius: 8, transition: 'all 0.15s ease' }} aria-label="Голосовой звонок" onClick={() => setCallMode('voice')}><IconPhone width={22} height={22} /></button>
+            <button type="button" style={{ border: 'none', background: 'transparent', padding: 12, color: theme.textMuted, cursor: 'pointer', borderRadius: 8, transition: 'all 0.15s ease' }} aria-label="Видеозвонок" onClick={() => setCallMode('video')}><IconVideo width={22} height={22} /></button>
           </>
         )}
       </header>
@@ -191,7 +194,7 @@ function ChatView({ chat, onBack }) {
           if (item.type === 'date') {
             const label = new Date(item.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
             return (
-              <div key={item.key} style={{ alignSelf: 'center', margin: '12px 0 6px', padding: '5px 14px', borderRadius: 8, background: theme.isDark ? 'rgba(255,255,255,.07)' : 'rgba(0,0,0,.06)', fontSize: 12, color: theme.textMuted, fontWeight: 500 }}>
+              <div key={item.key} style={{ alignSelf: 'center', margin: '16px 0 8px', padding: '6px 16px', borderRadius: 12, background: theme.isDark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.06)', fontSize: 13, color: theme.textMuted, fontWeight: 600, backdropFilter: 'blur(10px)' }}>
                 {label}
               </div>
             );
@@ -225,13 +228,13 @@ function ChatView({ chat, onBack }) {
           </div>
         </div>
       )}
-      <div style={{ padding: '10px 12px 14px', borderTop: '1px solid rgba(255,255,255,.06)', background: theme.headerBg, display: 'flex', gap: 10, alignItems: 'center' }}>
-        <label style={{ cursor: 'pointer', color: theme.textMuted, padding: 8, flexShrink: 0 }} aria-label="Прикрепить файл">
+      <div style={{ padding: '12px 16px', borderTop: `1px solid ${theme.border || 'rgba(255,255,255,0.08)'}`, background: theme.headerBg, backdropFilter: 'blur(20px)', display: 'flex', gap: 12, alignItems: 'center' }}>
+        <label style={{ cursor: 'pointer', color: theme.textMuted, padding: 10, flexShrink: 0, borderRadius: 10, transition: 'all 0.15s ease' }} aria-label="Прикрепить файл">
           <input type="file" accept="image/*,video/*,.pdf,.doc,.docx" style={{ display: 'none' }} onChange={onAttach} />
           <IconAttach width={24} height={24} />
         </label>
         <input
-          style={{ flex: 1, minWidth: 0, padding: '10px 16px', borderRadius: 20, border: 'none', background: theme.inputBg, color: theme.text, fontSize: 15, outline: 'none' }}
+          style={{ flex: 1, minWidth: 0, padding: '12px 18px', borderRadius: 22, border: 'none', background: theme.inputBg, color: theme.text, fontSize: 15, outline: 'none', transition: 'all 0.2s ease' }}
           placeholder="Сообщение"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
@@ -241,10 +244,10 @@ function ChatView({ chat, onBack }) {
           type="button"
           onClick={() => attachPreview ? sendMessage({ ...attachPreview, caption: inputValue }) : sendMessage(inputValue)}
           style={{
-            width: 44,
-            height: 44,
-            minWidth: 44,
-            minHeight: 44,
+            width: 48,
+            height: 48,
+            minWidth: 48,
+            minHeight: 48,
             flexShrink: 0,
             padding: 0,
             borderRadius: '50%',
@@ -256,6 +259,8 @@ function ChatView({ chat, onBack }) {
             alignItems: 'center',
             justifyContent: 'center',
             fontSize: 18,
+            boxShadow: '0 2px 10px rgba(0,136,204,0.35)',
+            transition: 'all 0.2s ease',
           }}
           aria-label="Отправить"
         >
@@ -370,29 +375,29 @@ export default function Chats() {
   // Двухколоночный макет: слева — только список чатов, справа — окно чата (как в Telegram Desktop)
   const s = {
     container: { display: 'flex', flexDirection: 'row', height: '100%', minHeight: 0, background: theme.pageBg },
-    header: { height: 54, padding: '0 12px 0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: theme.headerBg },
-    headerTitle: { fontSize: 20, fontWeight: 700, color: theme.text },
-    search: { padding: '8px 12px 12px' },
-    searchInput: { width: '100%', padding: '10px 12px 10px 36px', borderRadius: 20, border: 'none', background: theme.inputBg, color: theme.text, fontSize: 14, outline: 'none' },
+    header: { height: 56, padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: theme.headerBg, backdropFilter: 'blur(20px)', borderBottom: `1px solid ${theme.border || 'rgba(255,255,255,0.08)'}` },
+    headerTitle: { fontSize: 22, fontWeight: 700, color: theme.text, letterSpacing: '-0.5px' },
+    search: { padding: '8px 16px 12px' },
+    searchInput: { width: '100%', padding: '12px 16px 12px 44px', borderRadius: 22, border: 'none', background: theme.inputBg, color: theme.text, fontSize: 15, outline: 'none', transition: 'all 0.2s ease' },
     searchWrap: { position: 'relative' },
-    searchIcon: { position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: theme.textMuted, pointerEvents: 'none' },
-    sidebar: { width: 360, minWidth: 280, maxWidth: 420, flexShrink: 0, background: theme.sidebarBg, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative', borderRight: `1px solid ${theme.border || 'rgba(255,255,255,.06)'}` },
+    searchIcon: { position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: theme.textMuted, pointerEvents: 'none' },
+    sidebar: { width: 380, minWidth: 300, maxWidth: 450, flexShrink: 0, background: theme.sidebarBg, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative', borderRight: `1px solid ${theme.border || 'rgba(255,255,255,0.08)'}` },
     chatList: { flex: 1, overflowY: 'auto', overflowX: 'hidden' },
-    chatItem: { padding: '10px 12px 10px 16px', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', transition: 'background .12s ease', borderBottom: theme.border ? `1px solid ${theme.border}` : '1px solid rgba(255,255,255,.04)' },
-    chatItemActive: { background: 'rgba(255,255,255,.08)' },
-    avatar: { width: 54, height: 54, borderRadius: '50%', background: theme.accent, color: theme.accentText, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 600, flexShrink: 0 },
+    chatItem: { padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', transition: 'all 0.15s ease', borderBottom: theme.border ? `1px solid ${theme.border}` : 'none' },
+    chatItemActive: { background: theme.isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)' },
+    avatar: { width: 56, height: 56, borderRadius: '50%', background: `linear-gradient(135deg, ${theme.accent}, ${theme.accent}dd)`, color: theme.accentText, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 600, flexShrink: 0, boxShadow: '0 2px 8px rgba(0,0,0,0.15)' },
     chatInfo: { flex: 1, minWidth: 0 },
-    chatName: { fontSize: 16, fontWeight: 500, color: theme.text, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-    lastMsg: { fontSize: 14, color: theme.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+    chatName: { fontSize: 16, fontWeight: 600, color: theme.text, marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.2px' },
+    lastMsg: { fontSize: 14, color: theme.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.3 },
     chatMeta: { flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 },
-    chatTime: { fontSize: 12, color: theme.textMuted },
-    unreadBadge: { minWidth: 18, height: 18, borderRadius: 9, background: theme.accent, color: theme.accentText || '#fff', fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 5px' },
-    mainArea: { flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0, background: theme.cardBg, transition: 'opacity .2s ease' },
+    chatTime: { fontSize: 12, color: theme.textMuted, fontWeight: 500 },
+    unreadBadge: { minWidth: 20, height: 20, borderRadius: 10, background: theme.accent, color: theme.accentText || '#fff', fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 6px', boxShadow: '0 2px 6px rgba(0,136,204,0.3)' },
+    mainArea: { flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0, background: theme.cardBg, transition: 'opacity 0.2s ease' },
     empty: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 48, textAlign: 'center' },
-    emptyIconWrap: { width: 96, height: 96, borderRadius: 48, background: 'rgba(255,255,255,.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
-    emptyTitle: { fontSize: 22, fontWeight: 600, color: theme.text, marginBottom: 10 },
-    emptySub: { fontSize: 15, lineHeight: 1.5, color: theme.textMuted, maxWidth: 260 },
-    emptyTagline: { fontSize: 14, color: theme.textMuted, marginTop: 28 },
+    emptyIconWrap: { width: 100, height: 100, borderRadius: 50, background: `linear-gradient(135deg, ${theme.accent}22, ${theme.accent}11)`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 24, backdropFilter: 'blur(10px)' },
+    emptyTitle: { fontSize: 24, fontWeight: 700, color: theme.text, marginBottom: 12 },
+    emptySub: { fontSize: 16, lineHeight: 1.6, color: theme.textMuted, maxWidth: 280 },
+    emptyTagline: { fontSize: 14, color: theme.textMuted, marginTop: 32, opacity: 0.7 },
   };
 
   if (newChatOpen) {

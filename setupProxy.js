@@ -4,8 +4,18 @@ module.exports = function(app) {
   app.use(
     '/api',
     createProxyMiddleware({
-      target: 'http://45.150.10.220:3001',
+      target: process.env.REACT_APP_API_URL || 'http://localhost:3001',
       changeOrigin: true,
+      logLevel: 'debug'
+    })
+  );
+
+  app.use(
+    '/ws',
+    createProxyMiddleware({
+      target: process.env.REACT_APP_API_URL || 'http://localhost:3001',
+      changeOrigin: true,
+      ws: true
     })
   );
 };

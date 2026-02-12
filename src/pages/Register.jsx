@@ -45,12 +45,24 @@ function digitsOnly(value) {
 async function postJson(url, body, { signal } = {}) {
   let res;
   try {
+    // Добавляем таймаут 30 секунд
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+    if (signal) {
+      signal.addEventListener('abort', () => {
+        clearTimeout(timeoutId);
+      });
+    }
+
     res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body ?? {}),
-      signal,
+      signal: signal || controller.signal,
     });
+
+    clearTimeout(timeoutId);
   } catch (e) {
     if (e.name === "AbortError") throw e;
     const msg = e.message || "";

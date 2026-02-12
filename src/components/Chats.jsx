@@ -25,6 +25,7 @@ const FOLDER_ALL = 'all';
 function ChatView({ chat, onBack }) {
   const { theme, chatBg, isDark } = useTheme();
   const { displayName } = useUser();
+  const accent = typeof theme.accent === 'string' ? theme.accent : '#0a84ff';
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [attachPreview, setAttachPreview] = useState(null);
@@ -127,7 +128,6 @@ function ChatView({ chat, onBack }) {
     }
   };
 
-  const accent = typeof theme.accent === 'string' ? theme.accent : '#0a84ff';
   const bubbleIn = theme.bubbleIn || (isDark ? 'rgba(35, 42, 55, .85)' : 'rgba(255,255,255,.95)');
   const bubbleOut = theme.bubbleOut || accent;
   const bubbleStyleIn = {
@@ -166,8 +166,6 @@ function ChatView({ chat, onBack }) {
     });
     return out;
   }, [messages]);
-
-  const accent = typeof theme.accent === 'string' ? theme.accent : '#0a84ff';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -217,7 +215,7 @@ function ChatView({ chat, onBack }) {
           if (item.type === 'date') {
             const label = new Date(item.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
             return (
-              <div key={item.key} style={{ alignSelf: 'center', margin: '16px 0 8px', padding: '6px 16px', borderRadius: 12, background: theme.isDark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.06)', fontSize: 13, color: theme.textMuted, fontWeight: 600, backdropFilter: 'blur(10px)' }}>
+              <div key={item.key} style={{ alignSelf: 'center', margin: '16px 0 8px', padding: '6px 16px', borderRadius: 12, background: isDark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.06)', fontSize: 13, color: theme.textMuted, fontWeight: 600, backdropFilter: 'blur(10px)' }}>
                 {label}
               </div>
             );
@@ -311,19 +309,6 @@ export default function Chats() {
   const [folderMenuChatId, setFolderMenuChatId] = useState(null);
   const folderMenuRef = useRef(null);
   const folders = useMemo(() => getFolders(), [foldersRefresh]);
-
-  // Подключение к WebSocket для получения сообщений в реальном времени
-  useEffect(() => {
-    if (token) {
-      connectChatWebSocket(token, (data) => {
-        if (data.type === 'new_message') {
-          // Обновляем список чатов при новом сообщении
-          refreshList();
-        }
-      });
-    }
-    return () => disconnect();
-  }, [token]);
 
   useEffect(() => {
     if (!folderMenuChatId) return;

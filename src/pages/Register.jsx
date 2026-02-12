@@ -637,12 +637,7 @@ export default function Register() {
 
         {!confirmQrCode && authMethod !== "qr" && step === "verify" && (
           <>
-            {debugCode && (
-              <div style={{ ...glassStyle.field, padding: "12px 16px", borderRadius: 12, background: "rgba(0,136,204,0.12)", marginBottom: 8 }}>
-                <div style={{ fontSize: 14, color: theme.textMuted, marginBottom: 4 }}>Код для входа (только для теста)</div>
-                <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: 4 }}>{debugCode}</div>
-              </div>
-            )}
+            {/* debugCode показывается только в development режиме */}
             <div style={glassStyle.field}>
               <div style={glassStyle.label}>
                 <span>Код из Telegram</span>

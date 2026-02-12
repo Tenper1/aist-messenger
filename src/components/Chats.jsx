@@ -495,7 +495,7 @@ export default function Chats() {
               tabIndex={0}
               onClick={() => { setFolderMenuChatId(null); setSelectedChat(chat); }}
               onKeyDown={(e) => e.key === 'Enter' && setSelectedChat(chat)}
-              onMouseEnter={(e) => { if (selectedChat?.id !== chat.id) e.currentTarget.style.background = theme.isDark ? 'rgba(255,255,255,.04)' : 'rgba(0,0,0,.03)'; }}
+              onMouseEnter={(e) => { if (selectedChat?.id !== chat.id) e.currentTarget.style.background = isDark ? 'rgba(255,255,255,.04)' : 'rgba(0,0,0,.03)'; }}
               onMouseLeave={(e) => { if (selectedChat?.id !== chat.id) e.currentTarget.style.background = 'transparent'; }}
               style={{ ...s.chatItem, ...(selectedChat?.id === chat.id ? s.chatItemActive : {}), position: 'relative' }}
             >

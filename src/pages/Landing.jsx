@@ -1,225 +1,315 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-
-const styles = {
-  page: {
-    height: '100vh',
-    minHeight: '100vh',
-    width: '100%',
-    margin: 0,
-    padding: 0,
-    background: 'linear-gradient(180deg, #000 0%, #0a0a0f 40%, #050508 100%)',
-    color: '#f5f5f7',
-    fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif',
-    overflowX: 'hidden',
-    overflowY: 'auto',
-    WebkitOverflowScrolling: 'touch',
-    position: 'relative',
-  },
-  glow: {
-    position: 'fixed',
-    top: '-40%',
-    left: '50%',
-    width: '120%',
-    height: '80%',
-    transform: 'translateX(-50%)',
-    background: 'radial-gradient(ellipse 60% 50% at 50% 0%, rgba(10, 132, 255, .18) 0%, transparent 55%)',
-    pointerEvents: 'none',
-  },
-  nav: {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 100,
-    height: 52,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '0 28px',
-    background: 'rgba(0,0,0,.4)',
-    backdropFilter: 'saturate(180%) blur(20px)',
-    WebkitBackdropFilter: 'saturate(180%) blur(20px)',
-    borderBottom: '1px solid rgba(255,255,255,.06)',
-  },
-  logo: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 12,
-    textDecoration: 'none',
-    color: '#f5f5f7',
-  },
-  logoIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    background: 'linear-gradient(135deg, #0a84ff 0%, #5e5ce6 100%)',
-    boxShadow: '0 4px 20px rgba(10, 132, 255, .35)',
-  },
-  logoText: { fontSize: 20, fontWeight: 700, letterSpacing: '-0.03em' },
-  cta: {
-    padding: '10px 22px',
-    borderRadius: 980,
-    background: '#fff',
-    color: '#000',
-    fontSize: 15,
-    fontWeight: 600,
-    textDecoration: 'none',
-    letterSpacing: '-0.02em',
-    transition: 'transform 0.2s, box-shadow 0.2s',
-  },
-  hero: {
-    paddingTop: 140,
-    paddingBottom: 100,
-    paddingLeft: 24,
-    paddingRight: 24,
-    textAlign: 'center',
-    maxWidth: 900,
-    margin: '0 auto',
-    position: 'relative',
-    zIndex: 1,
-  },
-  heroLabel: {
-    fontSize: 15,
-    fontWeight: 600,
-    letterSpacing: 0.5,
-    color: 'rgba(255,255,255,.55)',
-    marginBottom: 12,
-    textTransform: 'uppercase',
-  },
-  heroTitle: {
-    fontSize: 'clamp(48px, 10vw, 72px)',
-    fontWeight: 800,
-    lineHeight: 1.02,
-    letterSpacing: '-0.035em',
-    margin: '0 0 20px',
-    background: 'linear-gradient(180deg, #fff 0%, rgba(255,255,255,.88) 100%)',
-    WebkitBackgroundClip: 'text',
-    WebkitTextFillColor: 'transparent',
-    backgroundClip: 'text',
-  },
-  heroSub: {
-    fontSize: 'clamp(20px, 2.8vw, 26px)',
-    lineHeight: 1.4,
-    color: 'rgba(255,255,255,.75)',
-    margin: '0 0 12px',
-    fontWeight: 400,
-    maxWidth: 560,
-    marginLeft: 'auto',
-    marginRight: 'auto',
-  },
-  heroTagline: {
-    fontSize: 'clamp(17px, 2vw, 20px)',
-    color: 'rgba(255,255,255,.5)',
-    marginBottom: 44,
-    fontWeight: 500,
-  },
-  heroCta: {
-    display: 'inline-block',
-    padding: '18px 40px',
-    borderRadius: 980,
-    background: 'linear-gradient(90deg, #0a84ff, #5e5ce6)',
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 600,
-    textDecoration: 'none',
-    letterSpacing: '-0.02em',
-    boxShadow: '0 8px 32px rgba(10, 132, 255, .4)',
-    transition: 'transform 0.2s, box-shadow 0.2s',
-  },
-  section: {
-    padding: '90px 24px',
-    maxWidth: 980,
-    margin: '0 auto',
-    position: 'relative',
-    zIndex: 1,
-  },
-  sectionTitle: {
-    fontSize: 36,
-    fontWeight: 700,
-    letterSpacing: '-0.03em',
-    margin: '0 0 16px',
-    color: '#f5f5f7',
-  },
-  sectionText: {
-    fontSize: 20,
-    lineHeight: 1.5,
-    color: 'rgba(255,255,255,.68)',
-    margin: 0,
-  },
-  features: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-    gap: 28,
-    marginTop: 56,
-  },
-  feature: {
-    padding: 32,
-    borderRadius: 20,
-    background: 'rgba(255,255,255,.04)',
-    border: '1px solid rgba(255,255,255,.08)',
-    transition: 'transform 0.2s, border-color 0.2s',
-  },
-  featureTitle: { fontSize: 18, fontWeight: 600, marginBottom: 10, color: '#f5f5f7' },
-  featureText: { fontSize: 15, lineHeight: 1.45, color: 'rgba(255,255,255,.6)', margin: 0 },
-  footer: {
-    padding: '56px 24px',
-    textAlign: 'center',
-    borderTop: '1px solid rgba(255,255,255,.06)',
-    color: 'rgba(255,255,255,.45)',
-    fontSize: 13,
-    position: 'relative',
-    zIndex: 1,
-  },
-};
+import { useTheme } from '../context/ThemeContext';
 
 export default function Landing() {
+  const { theme, isDark } = useTheme();
+
+  const styles = {
+    page: {
+      minHeight: '100vh',
+      width: '100%',
+      margin: 0,
+      padding: 0,
+      background: theme.pageBg,
+      color: theme.text,
+      fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif',
+      overflowX: 'hidden',
+      position: 'relative',
+    },
+    glow1: {
+      position: 'fixed',
+      top: '-30%',
+      right: '-20%',
+      width: '800px',
+      height: '800px',
+      background: 'radial-gradient(circle, rgba(10, 132, 255, .15) 0%, transparent 70%)',
+      pointerEvents: 'none',
+      filter: 'blur(80px)',
+    },
+    glow2: {
+      position: 'fixed',
+      bottom: '-20%',
+      left: '-20%',
+      width: '600px',
+      height: '600px',
+      background: 'radial-gradient(circle, rgba(94, 92, 230, .12) 0%, transparent 70%)',
+      pointerEvents: 'none',
+      filter: 'blur(80px)',
+    },
+    nav: {
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 100,
+      height: 64,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: '0 32px',
+      background: theme.headerBg,
+      backdropFilter: 'blur(20px) saturate(180%)',
+      WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+      borderBottom: `1px solid ${theme.border}`,
+    },
+    logo: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 12,
+      textDecoration: 'none',
+      color: theme.text,
+    },
+    logoIcon: {
+      width: 40,
+      height: 40,
+      borderRadius: 12,
+      background: theme.accent,
+      boxShadow: '0 8px 24px rgba(10, 132, 255, .3)',
+      display: 'grid',
+      placeItems: 'center',
+      fontWeight: 800,
+      fontSize: 14,
+      color: theme.accentText || '#fff',
+    },
+    logoText: { fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em' },
+    cta: {
+      padding: '12px 26px',
+      borderRadius: 14,
+      background: theme.accent,
+      color: theme.accentText || '#fff',
+      fontSize: 15,
+      fontWeight: 600,
+      textDecoration: 'none',
+      letterSpacing: '-0.01em',
+      boxShadow: '0 6px 20px rgba(0, 0, 0, .15)',
+      transition: 'transform 0.2s, box-shadow 0.2s',
+    },
+    hero: {
+      paddingTop: 160,
+      paddingBottom: 100,
+      paddingLeft: 24,
+      paddingRight: 24,
+      textAlign: 'center',
+      maxWidth: 960,
+      margin: '0 auto',
+      position: 'relative',
+      zIndex: 1,
+    },
+    heroLabel: {
+      fontSize: 14,
+      fontWeight: 600,
+      letterSpacing: 1,
+      color: theme.textMuted,
+      marginBottom: 16,
+      textTransform: 'uppercase',
+    },
+    heroTitle: {
+      fontSize: 'clamp(52px, 10vw, 80px)',
+      fontWeight: 800,
+      lineHeight: 1.05,
+      letterSpacing: '-0.03em',
+      margin: '0 0 24px',
+      background: isDark
+        ? 'linear-gradient(180deg, #fff 0%, rgba(255,255,255,.85) 100%)'
+        : 'linear-gradient(180deg, #1a1f35 0%, #2d3450 100%)',
+      WebkitBackgroundClip: 'text',
+      WebkitTextFillColor: 'transparent',
+      backgroundClip: 'text',
+    },
+    heroSub: {
+      fontSize: 'clamp(18px, 2.5vw, 22px)',
+      lineHeight: 1.5,
+      color: theme.textMuted,
+      margin: '0 0 16px',
+      fontWeight: 400,
+      maxWidth: 600,
+      marginLeft: 'auto',
+      marginRight: 'auto',
+    },
+    heroTagline: {
+      fontSize: 'clamp(16px, 2vw, 19px)',
+      color: theme.textMuted,
+      marginBottom: 48,
+      fontWeight: 500,
+    },
+    heroButtons: {
+      display: 'flex',
+      gap: 16,
+      justifyContent: 'center',
+      flexWrap: 'wrap',
+    },
+    heroCta: {
+      padding: '16px 42px',
+      borderRadius: 16,
+      background: theme.accent,
+      color: theme.accentText || '#fff',
+      fontSize: 17,
+      fontWeight: 600,
+      textDecoration: 'none',
+      letterSpacing: '-0.01em',
+      boxShadow: '0 10px 30px rgba(10, 132, 255, .35)',
+      transition: 'transform 0.2s, box-shadow 0.2s',
+    },
+    heroCtaSecondary: {
+      padding: '16px 42px',
+      borderRadius: 16,
+      background: theme.cardBg,
+      color: theme.text,
+      fontSize: 17,
+      fontWeight: 600,
+      textDecoration: 'none',
+      letterSpacing: '-0.01em',
+      border: `1px solid ${theme.border}`,
+      transition: 'transform 0.2s, box-shadow 0.2s',
+    },
+    section: {
+      padding: '100px 24px',
+      maxWidth: 1080,
+      margin: '0 auto',
+      position: 'relative',
+      zIndex: 1,
+    },
+    sectionTitle: {
+      fontSize: 38,
+      fontWeight: 700,
+      letterSpacing: '-0.02em',
+      margin: '0 0 18px',
+      color: theme.text,
+    },
+    sectionText: {
+      fontSize: 19,
+      lineHeight: 1.6,
+      color: theme.textMuted,
+      margin: 0,
+      maxWidth: 700,
+    },
+    features: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+      gap: 24,
+      marginTop: 60,
+    },
+    feature: {
+      padding: 36,
+      borderRadius: 22,
+      background: theme.cardBg,
+      border: `1px solid ${theme.cardBorder}`,
+      backdropFilter: 'blur(16px) saturate(140%)',
+      WebkitBackdropFilter: 'blur(16px) saturate(140%)',
+      boxShadow: isDark
+        ? '0 16px 48px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.08)'
+        : '0 16px 48px rgba(80,120,180,.15), inset 0 1px 0 rgba(255,255,255,.7)',
+      transition: 'transform 0.2s, border-color 0.2s',
+    },
+    featureIcon: {
+      width: 52,
+      height: 52,
+      borderRadius: 14,
+      background: theme.accent,
+      display: 'grid',
+      placeItems: 'center',
+      marginBottom: 18,
+      fontSize: 24,
+      color: theme.accentText || '#fff',
+    },
+    featureTitle: { fontSize: 19, fontWeight: 600, marginBottom: 10, color: theme.text },
+    featureText: { fontSize: 15, lineHeight: 1.5, color: theme.textMuted, margin: 0 },
+    footer: {
+      padding: '60px 24px',
+      textAlign: 'center',
+      borderTop: `1px solid ${theme.border}`,
+      color: theme.textMuted,
+      fontSize: 14,
+      position: 'relative',
+      zIndex: 1,
+      background: theme.headerBg,
+      backdropFilter: 'blur(20px)',
+      WebkitBackdropFilter: 'blur(20px)',
+    },
+    footerLink: {
+      color: theme.accent,
+      textDecoration: 'none',
+      margin: '0 8px',
+    },
+  };
+
   return (
     <div style={styles.page}>
-      <div style={styles.glow} aria-hidden="true" />
+      <div style={styles.glow1} aria-hidden="true" />
+      <div style={styles.glow2} aria-hidden="true" />
       <nav style={styles.nav}>
         <Link to="/" style={styles.logo}>
-          <div style={styles.logoIcon} />
+          <div style={styles.logoIcon}>AI</div>
           <span style={styles.logoText}>AIST</span>
         </Link>
         <Link to="/login" style={styles.cta}>Войти</Link>
       </nav>
 
       <section style={styles.hero}>
-        <p style={styles.heroLabel}>Мессенджер</p>
+        <p style={styles.heroLabel}>Мессенджер нового поколения</p>
         <h1 style={styles.heroTitle}>AIST</h1>
         <p style={styles.heroSub}>
-          Удобный, комфортный и безопасный. Чаты, звонки и каналы — без лишнего шума.
+          Коммуникация без границ. Чаты, звонки, каналы и истории — всё в одном месте.
         </p>
         <p style={styles.heroTagline}>
-          Шифрование. Только вы и собеседники. Подключиться к звонку невозможно.
+          Сквозное шифрование · Полная приватность · Безопасность данных
         </p>
-        <Link to="/login" style={styles.heroCta}>Открыть в браузере</Link>
+        <div style={styles.heroButtons}>
+          <Link to="/login" style={styles.heroCta}>Начать общение</Link>
+          <Link to="/login" style={styles.heroCtaSecondary}>Узнать больше</Link>
+        </div>
       </section>
 
       <section style={styles.section}>
-        <h2 style={styles.sectionTitle}>Чаты и звонки</h2>
+        <h2 style={styles.sectionTitle}>Возможности</h2>
         <p style={styles.sectionText}>
-          Переписка один на один и в группах, голос и видео. Всё под вашим контролем.
+          Всё необходимое для комфортного общения с друзьями, семьёй и коллегами.
         </p>
         <div style={styles.features}>
           <div style={styles.feature}>
+            <div style={styles.featureIcon}>💬</div>
+            <div style={styles.featureTitle}>Чаты</div>
+            <p style={styles.featureText}>Личные переписки, групповые чаты с тысячами участников, поиск по сообщениям и файлы.</p>
+          </div>
+          <div style={styles.feature}>
+            <div style={styles.featureIcon}>📞</div>
+            <div style={styles.featureTitle}>Звонки</div>
+            <p style={styles.featureText}>Голосовые и видеозвонки один на один. Кристальный звук и высокое качество видео.</p>
+          </div>
+          <div style={styles.feature}>
+            <div style={styles.featureIcon}>📺</div>
             <div style={styles.featureTitle}>Каналы</div>
-            <p style={styles.featureText}>Публикация новостей, админы и модераторы, ссылка для подписчиков.</p>
+            <p style={styles.featureText}>Создавайте каналы для новостей и контента. Админы, модераторы и неограниченная аудитория.</p>
           </div>
           <div style={styles.feature}>
+            <div style={styles.featureIcon}>🔍</div>
             <div style={styles.featureTitle}>Поиск по нику</div>
-            <p style={styles.featureText}>Найдите человека по нику — ник не отображается в имени.</p>
+            <p style={styles.featureText}>Находите друзей по уникальному нику. Ник отображается отдельно от имени.</p>
           </div>
           <div style={styles.feature}>
+            <div style={styles.featureIcon}>📸</div>
             <div style={styles.featureTitle}>Истории</div>
-            <p style={styles.featureText}>Фото и видео на вашей странице, как в современных мессенджерах.</p>
+            <p style={styles.featureText}>Делитесь моментами своей жизни через фото и видео истории. Автоудаление через 24 часа.</p>
+          </div>
+          <div style={styles.feature}>
+            <div style={styles.featureIcon}>🔒</div>
+            <div style={styles.featureTitle}>Шифрование</div>
+            <p style={styles.featureText}>Сквозное шифрование (E2E) для максимальной безопасности. Только вы и собеседник.</p>
           </div>
         </div>
       </section>
 
       <footer style={styles.footer}>
-        AIST · Удобный. Комфортный. Безопасный.
+        <div style={{ marginBottom: 16 }}>
+          <Link to="/login" style={styles.footerLink}>Войти</Link>
+          ·
+          <Link to="/login" style={styles.footerLink}>Регистрация</Link>
+          ·
+          <a href="https://t.me/AIST_SMS_BOT" target="_blank" rel="noopener noreferrer" style={styles.footerLink}>Telegram бот</a>
+        </div>
+        <div>AIST · Удобный · Комфортный · Безопасный</div>
+        <div style={{ marginTop: 8, fontSize: 12, opacity: 0.7 }}>© 2026 AIST Messenger</div>
       </footer>
     </div>
   );

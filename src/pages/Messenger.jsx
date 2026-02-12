@@ -17,7 +17,7 @@ const TABS = [
 ];
 
 export default function Messenger() {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const callCtx = useCall();
   const [activeTab, setActiveTab] = useState('chats');
   const [isDesktop, setIsDesktop] = useState(true);
@@ -31,9 +31,8 @@ export default function Messenger() {
     return () => m.removeEventListener('change', update);
   }, []);
 
-  const accent = theme.accent || '#0088cc';
+  const accent = typeof theme.accent === 'string' ? theme.accent : '#0a84ff';
   const tabBarBg = theme.tabBarBg || theme.headerBg || theme.cardBg;
-  const iconColor = (id) => (activeTab === id ? accent : (theme.textMuted || '#707579'));
 
   const styles = useMemo(() => ({
     container: {
@@ -50,10 +49,12 @@ export default function Messenger() {
     main: { flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 },
     tabBar: {
       display: 'flex',
-      height: 52,
-      minHeight: 52,
+      height: 56,
+      minHeight: 56,
       background: tabBarBg,
-      borderTop: '1px solid rgba(255,255,255,.06)',
+      borderTop: `1px solid ${theme.border}`,
+      backdropFilter: 'blur(16px) saturate(140%)',
+      WebkitBackdropFilter: 'blur(16px) saturate(140%)',
       paddingBottom: 'env(safe-area-inset-bottom, 0)',
     },
     tab: {
@@ -62,44 +63,72 @@ export default function Messenger() {
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 2,
+      gap: 4,
       border: 'none',
       background: 'transparent',
       cursor: 'pointer',
-      padding: '6px 4px',
+      padding: '8px 4px',
       fontSize: 11,
-      fontWeight: 500,
+      fontWeight: 600,
       minWidth: 0,
       color: theme.textMuted,
+      transition: 'color 0.15s',
     },
-    tabIconWrap: { width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+    tabIconWrap: { width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
     sidebar: {
       display: 'flex',
       flexDirection: 'column',
-      width: 68,
-      minWidth: 68,
+      width: 72,
+      minWidth: 72,
       background: theme.sidebarBg,
-      padding: '10px 0',
+      padding: '12px 0',
       alignItems: 'center',
-      gap: 2,
+      gap: 4,
+      borderRight: `1px solid ${theme.border}`,
     },
     navBtn: {
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 2,
-      width: 44,
-      height: 44,
+      gap: 4,
+      width: 48,
+      height: 48,
       border: 'none',
       background: 'transparent',
       cursor: 'pointer',
-      borderRadius: 10,
+      borderRadius: 12,
       fontSize: 10,
       color: theme.textMuted,
+      transition: 'all 0.2s',
     },
-    navBtnActive: { color: accent, background: 'rgba(255,255,255,.08)' },
-  }), [theme, activeTab, accent, tabBarBg]);
+    navBtnActive: {
+      color: accent,
+      background: `${accent}18`,
+    },
+    incomingCallModal: {
+      position: 'fixed',
+      inset: 0,
+      zIndex: 999,
+      background: 'rgba(0,0,0,.6)',
+      backdropFilter: 'blur(8px)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 24,
+    },
+    incomingCallCard: {
+      background: theme.cardBg,
+      borderRadius: 24,
+      padding: 28,
+      maxWidth: 340,
+      width: '100%',
+      boxShadow: '0 20px 60px rgba(0,0,0,.3)',
+      backdropFilter: 'blur(20px) saturate(140%)',
+      WebkitBackdropFilter: 'blur(20px) saturate(140%)',
+      border: `1px solid ${theme.cardBorder}`,
+    },
+  }), [theme, activeTab, accent, tabBarBg, isDark]);
 
   const incomingCall = callCtx?.incomingCall ?? null;
   const peerNameFromId = (userId) => {
@@ -126,13 +155,50 @@ export default function Messenger() {
         />
       )}
       {incomingCall && !activeIncomingCall && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 999, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-          <div style={{ background: theme.cardBg || theme.headerBg, borderRadius: 16, padding: 24, maxWidth: 320, width: '100%', boxShadow: '0 8px 32px rgba(0,0,0,.3)' }}>
-            <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>Входящий {incomingCall.isVideo ? 'видео' : 'голосовой'} звонок</div>
-            <div style={{ fontSize: 15, color: theme.textMuted, marginBottom: 20 }}>{peerNameFromId(incomingCall.fromUserId)}</div>
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-              <button type="button" onClick={callCtx.rejectCall} style={{ padding: '10px 20px', borderRadius: 12, border: 'none', background: theme.sidebarBg, color: theme.text, cursor: 'pointer', fontWeight: 500 }}>Отклонить</button>
-              <button type="button" onClick={handleAcceptIncoming} style={{ padding: '10px 20px', borderRadius: 12, border: 'none', background: theme.accent, color: theme.accentText || '#fff', cursor: 'pointer', fontWeight: 500 }}>Принять</button>
+        <div style={styles.incomingCallModal}>
+          <div style={styles.incomingCallCard}>
+            <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 8, color: theme.text }}>
+              Входящий {incomingCall.isVideo ? 'видео' : 'голосовой'} звонок
+            </div>
+            <div style={{ fontSize: 16, color: theme.textMuted, marginBottom: 24 }}>
+              {peerNameFromId(incomingCall.fromUserId)}
+            </div>
+            <div style={{ display: 'flex', gap: 14, justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={callCtx.rejectCall}
+                style={{
+                  padding: '12px 24px',
+                  borderRadius: 14,
+                  border: `1px solid ${theme.border}`,
+                  background: 'transparent',
+                  color: theme.text,
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontSize: 15,
+                  transition: 'all 0.2s',
+                }}
+              >
+                Отклонить
+              </button>
+              <button
+                type="button"
+                onClick={handleAcceptIncoming}
+                style={{
+                  padding: '12px 24px',
+                  borderRadius: 14,
+                  border: 'none',
+                  background: theme.accent,
+                  color: theme.accentText || '#fff',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontSize: 15,
+                  boxShadow: '0 6px 20px rgba(10, 132, 255, .35)',
+                  transition: 'all 0.2s',
+                }}
+              >
+                Принять
+              </button>
             </div>
           </div>
         </div>
@@ -149,7 +215,7 @@ export default function Messenger() {
                 aria-current={activeTab === tab.id ? 'page' : undefined}
               >
                 <span style={styles.tabIconWrap}>
-                  <tab.Icon width={24} height={24} style={{ display: 'block', color: 'inherit' }} />
+                  <tab.Icon width={26} height={26} style={{ display: 'block', color: 'inherit' }} />
                 </span>
                 <span>{tab.label}</span>
               </button>
@@ -172,12 +238,12 @@ export default function Messenger() {
               onClick={() => setActiveTab(tab.id)}
               style={{
                 ...styles.tab,
-                color: iconColor(tab.id),
+                color: activeTab === tab.id ? accent : theme.textMuted,
               }}
               aria-current={activeTab === tab.id ? 'page' : undefined}
             >
               <span style={styles.tabIconWrap}>
-                <tab.Icon width={24} height={24} style={{ display: 'block', color: 'inherit' }} />
+                <tab.Icon width={26} height={26} style={{ display: 'block', color: 'inherit' }} />
               </span>
               <span>{tab.label}</span>
             </button>

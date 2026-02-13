@@ -209,7 +209,7 @@ function ChatView({ chat, onBack }) {
       )}
       <div style={{ flex: 1, overflowY: 'auto', padding: '12px 18px 18px', display: 'flex', flexDirection: 'column', gap: 6, background: messagesAreaBg }}>
         {messages.length === 0 && (
-          <div style={{ color: theme.textMuted, fontSize: 15, textAlign: 'center', padding: 60 20 }}>Нет сообщений</div>
+          <div style={{ color: theme.textMuted, fontSize: 15, textAlign: 'center', padding: '60px 20px' }}>Нет сообщений</div>
         )}
         {messagesWithDates.map((item) => {
           if (item.type === 'date') {

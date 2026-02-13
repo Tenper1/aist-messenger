@@ -1,82 +1,189 @@
 /**
  * WebSocket для получения сообщений в реальном времени
+ * Улучшенная версия с более надёжной обработкой соединения
  */
 import { getWsUrl } from './api';
 
 let ws = null;
 let listeners = [];
 let reconnectTimer = null;
+let heartbeatTimer = null;
 let isConnected = false;
+let isConnecting = false;
 let pendingMessages = [];
+let reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 10;
+const RECONNECT_DELAY = 3000; // 3 секунды
 
 /**
  * Подключиться к WebSocket
  */
 export function connectChatWebSocket(token, onMessage) {
-  if (ws) {
+  if (ws && isConnected) {
     // Если уже подключены, добавляем слушателя
-    if (onMessage) listeners.push(onMessage);
+    if (onMessage && !listeners.includes(onMessage)) {
+      listeners.push(onMessage);
+    }
     return;
   }
 
+  if (isConnecting) {
+    // Уже пытаемся подключиться
+    if (onMessage && !listeners.includes(onMessage)) {
+      listeners.push(onMessage);
+    }
+    return;
+  }
+
+  isConnecting = true;
   const url = `${getWsUrl()}?token=${encodeURIComponent(token)}`;
 
-  ws = new WebSocket(url);
+  try {
+    ws = new WebSocket(url);
 
-  ws.onopen = () => {
-    console.log('[ChatWS] Connected');
-    isConnected = true;
-    // Отправляем отложенные сообщения
-    pendingMessages.forEach(msg => send(msg));
-    pendingMessages = [];
-  };
+    ws.onopen = () => {
+      console.log('[ChatWS] Connected');
+      isConnected = true;
+      isConnecting = false;
+      reconnectAttempts = 0;
 
-  ws.onmessage = (event) => {
-    try {
-      const data = JSON.parse(event.data);
-      console.log('[ChatWS] Received:', data);
+      // Запускаем heartbeat для поддержания соединения
+      startHeartbeat();
 
-      // Оповещаем всех слушателей
-      listeners.forEach(listener => listener(data));
-    } catch (e) {
-      console.error('[ChatWS] Error parsing message:', e);
+      // Отправляем отложенные сообщения
+      while (pendingMessages.length > 0) {
+        const msg = pendingMessages.shift();
+        ws.send(JSON.stringify(msg));
+      }
+
+      // Оповещаем слушателей о подключении
+      listeners.forEach(listener => {
+        try {
+          listener({ type: 'connected' });
+        } catch (e) {
+          console.error('[ChatWS] Error in listener:', e);
+        }
+      });
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log('[ChatWS] Received:', data);
+
+        // Обработка heartbeat
+        if (data.type === 'pong') {
+          return;
+        }
+
+        // Оповещаем всех слушателей
+        listeners.forEach(listener => {
+          try {
+            listener(data);
+          } catch (e) {
+            console.error('[ChatWS] Error in listener:', e);
+          }
+        });
+      } catch (e) {
+        console.error('[ChatWS] Error parsing message:', e);
+      }
+    };
+
+    ws.onclose = (event) => {
+      console.log('[ChatWS] Disconnected, code:', event.code, 'reason:', event.reason);
+      isConnected = false;
+      isConnecting = false;
+      ws = null;
+      stopHeartbeat();
+
+      // Оповещаем слушателей о отключении
+      listeners.forEach(listener => {
+        try {
+          listener({ type: 'disconnected' });
+        } catch (e) {
+          console.error('[ChatWS] Error in listener:', e);
+        }
+      });
+
+      // Автоматическое переподключение
+      if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+        reconnectAttempts++;
+        const delay = RECONNECT_DELAY * Math.min(reconnectAttempts, 5); // Экспоненциальная задержка
+        console.log(`[ChatWS] Reconnecting in ${delay}ms (attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`);
+        reconnectTimer = setTimeout(() => {
+          const newToken = localStorage.getItem('aist_token');
+          if (newToken) {
+            connectChatWebSocket(newToken);
+          }
+        }, delay);
+      } else {
+        console.error('[ChatWS] Max reconnect attempts reached');
+      }
+    };
+
+    ws.onerror = (error) => {
+      console.error('[ChatWS] Error:', error);
+    };
+
+    if (onMessage) listeners.push(onMessage);
+  } catch (e) {
+    console.error('[ChatWS] Connection error:', e);
+    isConnecting = false;
+  }
+}
+
+/**
+ * Запустить heartbeat (периодические ping-сообщения)
+ */
+function startHeartbeat() {
+  stopHeartbeat();
+  heartbeatTimer = setInterval(() => {
+    if (ws && isConnected) {
+      try {
+        ws.send(JSON.stringify({ type: 'ping' }));
+      } catch (e) {
+        console.error('[ChatWS] Heartbeat error:', e);
+      }
     }
-  };
+  }, 30000); // Каждые 30 секунд
+}
 
-  ws.onclose = () => {
-    console.log('[ChatWS] Disconnected');
-    isConnected = false;
-    ws = null;
-    // Автоматическое переподключение через 5 секунд
-    reconnectTimer = setTimeout(() => {
-      const newToken = localStorage.getItem('aist_token');
-      if (newToken) connectChatWebSocket(newToken);
-    }, 5000);
-  };
-
-  ws.onerror = (error) => {
-    console.error('[ChatWS] Error:', error);
-  };
-
-  if (onMessage) listeners.push(onMessage);
+/**
+ * Остановить heartbeat
+ */
+function stopHeartbeat() {
+  if (heartbeatTimer) {
+    clearInterval(heartbeatTimer);
+    heartbeatTimer = null;
+  }
 }
 
 /**
  * Отправить сообщение через WebSocket
  */
 export function send(data) {
-  if (!ws || !isConnected) {
+  if (ws && isConnected) {
+    try {
+      ws.send(JSON.stringify(data));
+      return true;
+    } catch (e) {
+      console.error('[ChatWS] Send error:', e);
+      pendingMessages.push(data);
+      return false;
+    }
+  } else {
     pendingMessages.push(data);
-    return;
+    return false;
   }
-  ws.send(JSON.stringify(data));
 }
 
 /**
  * Добавить слушателя сообщений
  */
 export function addListener(listener) {
-  listeners.push(listener);
+  if (!listeners.includes(listener)) {
+    listeners.push(listener);
+  }
 }
 
 /**
@@ -90,17 +197,24 @@ export function removeListener(listener) {
  * Отключиться от WebSocket
  */
 export function disconnect() {
+  stopHeartbeat();
   if (reconnectTimer) {
     clearTimeout(reconnectTimer);
     reconnectTimer = null;
   }
   if (ws) {
-    ws.close();
+    try {
+      ws.close();
+    } catch (e) {
+      console.error('[ChatWS] Close error:', e);
+    }
     ws = null;
   }
   listeners = [];
   isConnected = false;
+  isConnecting = false;
   pendingMessages = [];
+  reconnectAttempts = 0;
 }
 
 /**
@@ -108,4 +222,18 @@ export function disconnect() {
  */
 export function isWebSocketConnected() {
   return isConnected;
+}
+
+/**
+ * Проверить, идёт ли подключение
+ */
+export function isWebSocketConnecting() {
+  return isConnecting;
+}
+
+/**
+ * Получить количество попыток переподключения
+ */
+export function getReconnectAttempts() {
+  return reconnectAttempts;
 }

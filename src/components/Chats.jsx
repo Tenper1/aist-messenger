@@ -2,7 +2,12 @@ import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import { useUser } from '../context/UserContext';
-import { IconBack, IconSearch, IconPen, IconChannel, IconChevronRight, IconPhone, IconVideo, IconAttach } from './Icons';
+import {
+  IconBack, IconSearch, IconPen, IconChannel, IconChevronRight,
+  IconPhone, IconVideo, IconAttach, IconSend, IconSmile, IconMore,
+  IconStories, IconGallery, IconContacts, IconCheck, IconCheckDouble,
+  IconCopy, IconDelete, IconReply, IconForward, IconPin, IconMute
+} from './Icons';
 import CallScreen from './CallScreen';
 import {
   getChatList,
@@ -17,7 +22,7 @@ import {
 } from '../lib/chatStorage';
 import { apiGetChats, apiGetMessages, apiSendMessage, apiCreateChat } from '../lib/api';
 import { getFolders, addChatToFolder, removeChatFromFolder, getChatFolderIds } from '../lib/folderStorage';
-import { connectChatWebSocket, disconnect, addListener, removeListener } from '../lib/chatWebSocket';
+import { connectChatWebSocket, disconnect, addListener, removeListener, isWebSocketConnected } from '../lib/chatWebSocket';
 
 const APP_DOMAIN = 'https://aist-messenger.vercel.app';
 const FOLDER_ALL = 'all';
@@ -128,27 +133,27 @@ function ChatView({ chat, onBack }) {
     }
   };
 
-  const bubbleIn = theme.bubbleIn || (isDark ? 'rgba(35, 42, 55, .85)' : 'rgba(255,255,255,.95)');
+  const bubbleIn = theme.bubbleIn || (isDark ? 'rgba(32, 42, 58, .88)' : 'rgba(255,255,255,.92)');
   const bubbleOut = theme.bubbleOut || accent;
   const bubbleStyleIn = {
-    padding: '12px 16px 10px 16px',
-    borderRadius: '20px 20px 20px 6px',
+    padding: '14px 18px 12px 18px',
+    borderRadius: '22px 22px 22px 8px',
     background: bubbleIn,
     color: theme.text,
     fontSize: 15,
-    lineHeight: 1.45,
+    lineHeight: 1.5,
     maxWidth: '100%',
-    boxShadow: isDark ? '0 2px 8px rgba(0,0,0,.25)' : '0 2px 8px rgba(0,0,0,.08)',
-    backdropFilter: 'blur(12px) saturate(140%)',
-    WebkitBackdropFilter: 'blur(12px) saturate(140%)',
+    boxShadow: isDark ? '0 4px 16px rgba(0,0,0,.3)' : '0 4px 16px rgba(0,0,0,.1)',
+    backdropFilter: 'blur(20px) saturate(160%)',
+    WebkitBackdropFilter: 'blur(20px) saturate(160%)',
     border: `1px solid ${theme.cardBorder || 'transparent'}`,
   };
   const bubbleStyleOut = {
     ...bubbleStyleIn,
-    borderRadius: '20px 20px 6px 20px',
+    borderRadius: '22px 22px 8px 22px',
     background: bubbleOut,
     color: theme.accentText || '#fff',
-    boxShadow: '0 4px 12px rgba(10, 132, 255, .3)',
+    boxShadow: `0 6px 20px ${theme.glow || 'rgba(10, 132, 255, .4)'}`,
     border: 'none',
   };
 
@@ -169,18 +174,19 @@ function ChatView({ chat, onBack }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <header style={{ height: 60, padding: '0 12px 0 4px', display: 'flex', alignItems: 'center', gap: 8, background: theme.headerBg, backdropFilter: 'blur(20px) saturate(140%)', WebkitBackdropFilter: 'blur(20px) saturate(140%)', borderBottom: `1px solid ${theme.border}` }}>
-        <button type="button" style={{ border: 'none', background: 'transparent', color: accent, padding: 12, cursor: 'pointer', display: isMobile ? 'flex' : 'none', alignItems: 'center', justifyContent: 'center', borderRadius: 12, transition: 'background 0.2s' }} onClick={onBack} aria-label="Назад">
+      <header style={{ height: 64, padding: '0 8px 0 4px', display: 'flex', alignItems: 'center', gap: 6, background: theme.headerBg, backdropFilter: 'blur(24px) saturate(180%)', WebkitBackdropFilter: 'blur(24px) saturate(180%)', borderBottom: `1px solid ${theme.border}`, boxShadow: isDark ? '0 4px 20px rgba(0,0,0,.15)' : '0 4px 20px rgba(0,0,0,.06)' }}>
+        <button type="button" style={{ border: 'none', background: 'transparent', color: accent, padding: 10, cursor: 'pointer', display: isMobile ? 'flex' : 'none', alignItems: 'center', justifyContent: 'center', borderRadius: 12, transition: 'all 0.2s' }} onClick={onBack} aria-label="Назад">
           <IconBack width={24} height={24} />
         </button>
-        <button type="button" onClick={() => chat.type === 'channel' && setShowChannelInfo(true)} style={{ flex: 1, border: 'none', background: 'transparent', padding: '12px 8px', cursor: chat.type === 'channel' ? 'pointer' : 'default', textAlign: 'left', minWidth: 0, borderRadius: 12, transition: 'background 0.2s' }}>
+        <button type="button" onClick={() => chat.type === 'channel' && setShowChannelInfo(true)} style={{ flex: 1, border: 'none', background: 'transparent', padding: '10px 12px', cursor: chat.type === 'channel' ? 'pointer' : 'default', textAlign: 'left', minWidth: 0, borderRadius: 12, transition: 'background 0.2s' }}>
           <span style={{ fontWeight: 700, fontSize: 18, color: theme.text, display: 'block', letterSpacing: '-0.3px' }}>{chat.name}</span>
-          {chat.type !== 'channel' && <span style={{ fontSize: 13, color: theme.textMuted, fontWeight: 500 }}>был(а) недавно</span>}
+          {chat.type !== 'channel' && <span style={{ fontSize: 13, color: theme.textMuted, fontWeight: 500 }}>онлайн</span>}
         </button>
         {chat.type !== 'channel' && (
           <>
-            <button type="button" style={{ border: 'none', background: 'transparent', padding: 12, color: theme.textMuted, cursor: 'pointer', borderRadius: 12, transition: 'all 0.2s' }} aria-label="Голосовой звонок" onClick={() => setCallMode('voice')}><IconPhone width={22} height={22} /></button>
-            <button type="button" style={{ border: 'none', background: 'transparent', padding: 12, color: theme.textMuted, cursor: 'pointer', borderRadius: 12, transition: 'all 0.2s' }} aria-label="Видеозвонок" onClick={() => setCallMode('video')}><IconVideo width={22} height={22} /></button>
+            <button type="button" style={{ border: 'none', background: 'transparent', padding: 10, color: theme.textMuted, cursor: 'pointer', borderRadius: 12, transition: 'all 0.2s' }} aria-label="Голосовой звонок" onClick={() => setCallMode('voice')}><IconPhone width={22} height={22} /></button>
+            <button type="button" style={{ border: 'none', background: 'transparent', padding: 10, color: theme.textMuted, cursor: 'pointer', borderRadius: 12, transition: 'all 0.2s' }} aria-label="Видеозвонок" onClick={() => setCallMode('video')}><IconVideo width={22} height={22} /></button>
+            <button type="button" style={{ border: 'none', background: 'transparent', padding: 10, color: theme.textMuted, cursor: 'pointer', borderRadius: 12, transition: 'all 0.2s' }} aria-label="Ещё"><IconMore width={22} height={22} /></button>
           </>
         )}
       </header>
@@ -207,7 +213,7 @@ function ChatView({ chat, onBack }) {
       {callMode && (
         <CallScreen peerName={chat.name} isVideo={callMode === 'video'} onEnd={() => setCallMode(null)} peerUserId={chat.peerUserId || chat.otherUserId} />
       )}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '12px 18px 18px', display: 'flex', flexDirection: 'column', gap: 6, background: messagesAreaBg }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '14px 20px 20px', display: 'flex', flexDirection: 'column', gap: 8, background: messagesAreaBg }}>
         {messages.length === 0 && (
           <div style={{ color: theme.textMuted, fontSize: 15, textAlign: 'center', padding: '60px 20px' }}>Нет сообщений</div>
         )}
@@ -252,13 +258,13 @@ function ChatView({ chat, onBack }) {
           </div>
         </div>
       )}
-      <div style={{ padding: '14px 18px', borderTop: `1px solid ${theme.border}`, background: theme.headerBg, backdropFilter: 'blur(20px) saturate(140%)', WebkitBackdropFilter: 'blur(20px) saturate(140%)', display: 'flex', gap: 12, alignItems: 'center' }}>
-        <label style={{ cursor: 'pointer', color: theme.textMuted, padding: 10, flexShrink: 0, borderRadius: 12, transition: 'all 0.2s' }} aria-label="Прикрепить файл" onMouseEnter={(e) => e.currentTarget.style.background = theme.sidebarBg} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+      <div style={{ padding: '12px 16px 14px', borderTop: `1px solid ${theme.border}`, background: theme.headerBg, backdropFilter: 'blur(24px) saturate(180%)', WebkitBackdropFilter: 'blur(24px) saturate(180%)', display: 'flex', gap: 10, alignItems: 'center' }}>
+        <label style={{ cursor: 'pointer', color: theme.textMuted, padding: 8, flexShrink: 0, borderRadius: 14, transition: 'all 0.2s' }} aria-label="Прикрепить файл" onMouseEnter={(e) => e.currentTarget.style.background = isDark ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.04)'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
           <input type="file" accept="image/*,video/*,.pdf,.doc,.docx" style={{ display: 'none' }} onChange={onAttach} />
           <IconAttach width={24} height={24} />
         </label>
         <input
-          style={{ flex: 1, minWidth: 0, padding: '14px 20px', borderRadius: 24, border: 'none', background: theme.messageInputBg || theme.inputBg, color: theme.text, fontSize: 15, outline: 'none', transition: 'all 0.2s' }}
+          style={{ flex: 1, minWidth: 0, padding: '14px 20px', borderRadius: 26, border: 'none', background: theme.messageInputBg || theme.inputBg, color: theme.text, fontSize: 15, outline: 'none', transition: 'all 0.2s', boxShadow: isDark ? '0 2px 8px rgba(0,0,0,.15)' : '0 2px 8px rgba(0,0,0,.05)' }}
           placeholder="Сообщение"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
@@ -268,10 +274,10 @@ function ChatView({ chat, onBack }) {
           type="button"
           onClick={() => attachPreview ? sendMessage({ ...attachPreview, caption: inputValue }) : sendMessage(inputValue)}
           style={{
-            width: 52,
-            height: 52,
-            minWidth: 52,
-            minHeight: 52,
+            width: 48,
+            height: 48,
+            minWidth: 48,
+            minHeight: 48,
             flexShrink: 0,
             padding: 0,
             borderRadius: '50%',
@@ -283,12 +289,12 @@ function ChatView({ chat, onBack }) {
             alignItems: 'center',
             justifyContent: 'center',
             fontSize: 18,
-            boxShadow: '0 6px 20px rgba(10, 132, 255, .4)',
+            boxShadow: `0 6px 20px ${theme.glow || 'rgba(10, 132, 255, .4)'}`,
             transition: 'all 0.2s',
           }}
           aria-label="Отправить"
         >
-          ➤
+          <IconSend width={22} height={22} />
         </button>
       </div>
     </div>
@@ -402,29 +408,29 @@ export default function Chats() {
   // Двухколоночный макет: слева — только список чатов, справа — окно чата (как в Telegram Desktop)
   const s = {
     container: { display: 'flex', flexDirection: 'row', height: '100%', minHeight: 0, background: theme.pageBg },
-    header: { height: 60, padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: theme.headerBg, backdropFilter: 'blur(20px) saturate(140%)', WebkitBackdropFilter: 'blur(20px) saturate(140%)', borderBottom: `1px solid ${theme.border}` },
-    headerTitle: { fontSize: 23, fontWeight: 700, color: theme.text, letterSpacing: '-0.5px' },
-    search: { padding: '10px 16px 14px' },
-    searchInput: { width: '100%', padding: '14px 18px 14px 48px', borderRadius: 24, border: 'none', background: theme.inputBg, color: theme.text, fontSize: 15, outline: 'none', transition: 'all 0.2s' },
+    header: { height: 64, padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: theme.headerBg, backdropFilter: 'blur(24px) saturate(180%)', WebkitBackdropFilter: 'blur(24px) saturate(180%)', borderBottom: `1px solid ${theme.border}`, boxShadow: isDark ? '0 4px 20px rgba(0,0,0,.15)' : '0 4px 20px rgba(0,0,0,.06)' },
+    headerTitle: { fontSize: 24, fontWeight: 700, color: theme.text, letterSpacing: '-0.5px' },
+    search: { padding: '12px 16px 14px' },
+    searchInput: { width: '100%', padding: '14px 18px 14px 50px', borderRadius: 24, border: 'none', background: theme.inputBg, color: theme.text, fontSize: 15, outline: 'none', transition: 'all 0.2s', boxShadow: isDark ? '0 2px 8px rgba(0,0,0,.15)' : '0 2px 8px rgba(0,0,0,.05)' },
     searchWrap: { position: 'relative' },
     searchIcon: { position: 'absolute', left: 18, top: '50%', transform: 'translateY(-50%)', color: theme.textMuted, pointerEvents: 'none' },
-    sidebar: { width: 400, minWidth: 320, maxWidth: 480, flexShrink: 0, background: theme.sidebarBg, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative', borderRight: `1px solid ${theme.border}` },
+    sidebar: { width: 400, minWidth: 320, maxWidth: 480, flexShrink: 0, background: theme.sidebarBg, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative', borderRight: `1px solid ${theme.border}`, backdropFilter: 'blur(24px) saturate(160%)', WebkitBackdropFilter: 'blur(24px) saturate(160%)' },
     chatList: { flex: 1, overflowY: 'auto', overflowX: 'hidden' },
     chatItem: { padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 14, cursor: 'pointer', transition: 'all 0.2s', borderBottom: theme.border ? `1px solid ${theme.border}` : 'none' },
-    chatItemActive: { background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)' },
-    avatar: { width: 56, height: 56, borderRadius: '50%', background: `linear-gradient(135deg, ${accent}, ${accent}dd)`, color: theme.accentText || '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 600, flexShrink: 0, boxShadow: '0 4px 12px rgba(10, 132, 255, .25)' },
+    chatItemActive: { background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)' },
+    avatar: { width: 56, height: 56, borderRadius: '50%', background: `linear-gradient(135deg, ${accent}, ${accent}dd)`, color: theme.accentText || '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 600, flexShrink: 0, boxShadow: `0 4px 14px ${theme.glow || 'rgba(10, 132, 255, .3)'}` },
     chatInfo: { flex: 1, minWidth: 0 },
     chatName: { fontSize: 16, fontWeight: 600, color: theme.text, marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.2px' },
     lastMsg: { fontSize: 14, color: theme.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.35 },
     chatMeta: { flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 },
     chatTime: { fontSize: 12, color: theme.textMuted, fontWeight: 500 },
-    unreadBadge: { minWidth: 20, height: 20, borderRadius: 10, background: accent, color: theme.accentText || '#fff', fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 6px', boxShadow: '0 2px 8px rgba(10, 132, 255, .3)' },
+    unreadBadge: { minWidth: 20, height: 20, borderRadius: 10, background: accent, color: theme.accentText || '#fff', fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 6px', boxShadow: `0 2px 8px ${theme.glow || 'rgba(10, 132, 255, .35)'}` },
     mainArea: { flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0, background: theme.cardBg, transition: 'opacity 0.2s' },
     empty: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 48, textAlign: 'center' },
-    emptyIconWrap: { width: 110, height: 110, borderRadius: 55, background: `linear-gradient(135deg, ${accent}22, ${accent}11)`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 28, backdropFilter: 'blur(12px)' },
-    emptyTitle: { fontSize: 26, fontWeight: 700, color: theme.text, marginBottom: 14 },
-    emptySub: { fontSize: 16, lineHeight: 1.6, color: theme.textMuted, maxWidth: 300 },
-    emptyTagline: { fontSize: 15, color: theme.textMuted, marginTop: 36, opacity: 0.7 },
+    emptyIconWrap: { width: 120, height: 120, borderRadius: 60, background: `linear-gradient(135deg, ${accent}15, ${accent}08)`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 28, backdropFilter: 'blur(16px)', boxShadow: `0 8px 32px ${theme.glow || 'rgba(10, 132, 255, .2)'}` },
+    emptyTitle: { fontSize: 28, fontWeight: 700, color: theme.text, marginBottom: 14 },
+    emptySub: { fontSize: 17, lineHeight: 1.6, color: theme.textMuted, maxWidth: 320 },
+    emptyTagline: { fontSize: 16, color: theme.textMuted, marginTop: 36, opacity: 0.7 },
   };
 
   if (newChatOpen) {
@@ -482,6 +488,25 @@ export default function Chats() {
           <button type="button" style={{ padding: '8px 16px', borderRadius: 20, border: 'none', background: activeFolderId === FOLDER_ALL ? accent : theme.sidebarBg, color: activeFolderId === FOLDER_ALL ? (theme.accentText || '#fff') : theme.textMuted, fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s' }} onClick={() => { setFolderMenuChatId(null); setActiveFolderId(FOLDER_ALL); }}>Все чаты</button>
           {folders.map((f) => (
             <button key={f.id} type="button" style={{ padding: '8px 16px', borderRadius: 20, border: 'none', background: activeFolderId === f.id ? accent : theme.sidebarBg, color: activeFolderId === f.id ? (theme.accentText || '#fff') : theme.textMuted, fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s' }} onClick={() => { setFolderMenuChatId(null); setActiveFolderId(f.id); }}>{f.name}</button>
+          ))}
+        </div>
+        {/* Истории */}
+        <div style={{ padding: '12px 16px 8px', display: 'flex', gap: 12, overflowX: 'auto', flexShrink: 0, borderBottom: `1px solid ${theme.border}` }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, flexShrink: 0, cursor: 'pointer' }}>
+            <div style={{ width: 62, height: 62, borderRadius: '50%', background: `linear-gradient(135deg, ${accent}, ${accent}dd)`, padding: 3, boxShadow: `0 4px 14px ${theme.glow || 'rgba(10, 132, 255, .3)'}` }}>
+              <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: theme.sidebarBg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.text, fontSize: 24 }}>+</div>
+            </div>
+            <span style={{ fontSize: 11, color: theme.textMuted, fontWeight: 500 }}>Моя история</span>
+          </div>
+          {chatsByFolder.slice(0, 8).map((chat) => (
+            <div key={`story-${chat.id}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, flexShrink: 0, cursor: 'pointer' }}>
+              <div style={{ width: 62, height: 62, borderRadius: '50%', background: `linear-gradient(135deg, ${accent}, ${accent}dd)`, padding: 3, boxShadow: `0 4px 14px ${theme.glow || 'rgba(10, 132, 255, .3)'}` }}>
+                <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: theme.cardBg, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                  {chat.photo ? <img src={chat.photo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 20, fontWeight: 600, color: theme.text }}>{chat.name?.[0]?.toUpperCase() || '?'}</span>}
+                </div>
+              </div>
+              <span style={{ fontSize: 11, color: theme.textMuted, fontWeight: 500, maxWidth: 60, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{chat.name}</span>
+            </div>
           ))}
         </div>
         <div className="scrollable" style={s.chatList}>
@@ -543,23 +568,23 @@ export default function Chats() {
             position: 'absolute',
             bottom: 24,
             right: 16,
-            width: 58,
-            height: 58,
-            borderRadius: 29,
+            width: 60,
+            height: 60,
+            borderRadius: 30,
             border: 'none',
             background: accent,
             color: theme.accentText || '#fff',
-            boxShadow: '0 6px 24px rgba(10, 132, 255, .45)',
+            boxShadow: `0 8px 32px ${theme.glow || 'rgba(10, 132, 255, .5)'}`,
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            transition: 'all 0.2s',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
           }}
-          onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+          onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.08)'}
           onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
         >
-          <IconPen width={26} height={26} />
+          <IconPen width={28} height={28} />
         </button>
       </div>
       <div style={s.mainArea}>

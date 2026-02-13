@@ -55,7 +55,12 @@ function App() {
     // Убираем стандартные стили браузера
     document.body.style.margin = '0';
     document.body.style.padding = '0';
-    document.body.style.overflow = 'hidden';
+    const token = localStorage.getItem('aist_token');
+    if (token) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'auto';
+    }
   }, []);
 
   return (

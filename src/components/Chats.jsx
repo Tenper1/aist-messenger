@@ -478,7 +478,7 @@ export default function Chats() {
             <input type="text" style={s.searchInput} placeholder="Поиск" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
           </div>
         </div>
-        <div style={{ padding: '8px 14px 12px', display: 'flex', gap: 8, overflowX: 'auto', flexShrink: 0' }}>
+        <div style={{ padding: '8px 14px 12px', display: 'flex', gap: 8, overflowX: 'auto', flexShrink: 0 }}>
           <button type="button" style={{ padding: '8px 16px', borderRadius: 20, border: 'none', background: activeFolderId === FOLDER_ALL ? accent : theme.sidebarBg, color: activeFolderId === FOLDER_ALL ? (theme.accentText || '#fff') : theme.textMuted, fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s' }} onClick={() => { setFolderMenuChatId(null); setActiveFolderId(FOLDER_ALL); }}>Все чаты</button>
           {folders.map((f) => (
             <button key={f.id} type="button" style={{ padding: '8px 16px', borderRadius: 20, border: 'none', background: activeFolderId === f.id ? accent : theme.sidebarBg, color: activeFolderId === f.id ? (theme.accentText || '#fff') : theme.textMuted, fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s' }} onClick={() => { setFolderMenuChatId(null); setActiveFolderId(f.id); }}>{f.name}</button>

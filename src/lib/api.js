@@ -115,3 +115,85 @@ export async function apiSetPublicKey(publicKeyPem) {
     return null;
   }
 }
+
+// ——— Stories API ———
+
+/** Получить истории от подписанных пользователей */
+export async function apiGetStories() {
+  if (!getToken()) return null;
+  try {
+    return await request('GET', '/api/stories');
+  } catch {
+    return null;
+  }
+}
+
+/** Получить мои истории */
+export async function apiGetMyStories() {
+  if (!getToken()) return null;
+  try {
+    return await request('GET', '/api/stories/my');
+  } catch {
+    return null;
+  }
+}
+
+/** Создать историю */
+export async function apiCreateStory({ mediaUrl, mediaType, caption }) {
+  if (!getToken()) return null;
+  try {
+    return await request('POST', '/api/stories', { mediaUrl, mediaType, caption });
+  } catch {
+    return null;
+  }
+}
+
+/** Отметить историю как просмотренную */
+export async function apiViewStory(storyId) {
+  if (!getToken() || !storyId) return null;
+  try {
+    return await request('POST', `/api/stories/${encodeURIComponent(storyId)}/view`);
+  } catch {
+    return null;
+  }
+}
+
+/** Удалить историю */
+export async function apiDeleteStory(storyId) {
+  if (!getToken() || !storyId) return null;
+  try {
+    return await request('DELETE', `/api/stories/${encodeURIComponent(storyId)}`);
+  } catch {
+    return null;
+  }
+}
+
+/** Подписаться на истории пользователя */
+export async function apiSubscribeToStories(userId) {
+  if (!getToken() || !userId) return null;
+  try {
+    return await request('POST', `/api/stories/subscribe/${encodeURIComponent(userId)}`);
+  } catch {
+    return null;
+  }
+}
+
+/** Отписаться от историй пользователя */
+export async function apiUnsubscribeFromStories(userId) {
+  if (!getToken() || !userId) return null;
+  try {
+    return await request('DELETE', `/api/stories/subscribe/${encodeURIComponent(userId)}`);
+  } catch {
+    return null;
+  }
+}
+
+/** Получить список подписок */
+export async function apiGetStorySubscriptions() {
+  if (!getToken()) return null;
+  try {
+    return await request('GET', '/api/stories/subscriptions');
+  } catch {
+    return null;
+  }
+}

@@ -55,12 +55,25 @@ function App() {
     // Убираем стандартные стили браузера
     document.body.style.margin = '0';
     document.body.style.padding = '0';
+
+    // Определяем режим: мессенджер или лэндинг
     const token = localStorage.getItem('aist_token');
-    if (token) {
-      document.body.style.overflow = 'hidden';
+    const isMessengerPath = window.location.pathname.startsWith('/messenger');
+
+    if (token && isMessengerPath) {
+      // Режим мессенджера: фиксированный экран без прокрутки
+      document.body.classList.add('messenger-mode');
+      document.body.classList.remove('landing-mode');
     } else {
-      document.body.style.overflow = 'auto';
+      // Режим лэндинга: прокрутка включена
+      document.body.classList.add('landing-mode');
+      document.body.classList.remove('messenger-mode');
     }
+
+    // Очистка при размонтировании
+    return () => {
+      document.body.classList.remove('messenger-mode', 'landing-mode');
+    };
   }, []);
 
   return (

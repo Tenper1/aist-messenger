@@ -6,7 +6,7 @@ import { UserProvider } from './context/UserContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import App from './App';
 
-// Глобальные стили: фиксированный экран, без «резинки» на iOS
+// Глобальные стили: фиксированный экран для мессенджера, прокрутка для лэндинга
 const globalStyles = `
   * { box-sizing: border-box; }
   html {
@@ -14,8 +14,6 @@ const globalStyles = `
     padding: 0;
     width: 100%;
     height: 100%;
-    overflow: hidden;
-    position: fixed;
     -webkit-text-size-adjust: 100%;
     -webkit-tap-highlight-color: transparent;
     background: #0e1621;
@@ -24,9 +22,7 @@ const globalStyles = `
     margin: 0;
     padding: 0;
     width: 100%;
-    height: 100%;
-    overflow: hidden;
-    position: fixed;
+    min-height: 100%;
     overscroll-behavior: none;
     -webkit-overflow-scrolling: touch;
     touch-action: pan-x pan-y;
@@ -36,13 +32,26 @@ const globalStyles = `
     font-feature-settings: "kern" 1, "liga" 1;
     -webkit-font-smoothing: antialiased;
   }
+  /* Фиксированный режим для мессенджера */
+  body.messenger-mode {
+    position: fixed;
+    overflow: hidden;
+    height: 100vh;
+  }
+  /* Прокручиваемый режим для лэндинга и других публичных страниц */
+  body.landing-mode {
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
   #root {
     width: 100%;
-    height: 100%;
     margin: 0;
     padding: 0;
-    overflow: hidden;
     position: relative;
+  }
+  body.messenger-mode #root {
+    height: 100%;
+    overflow: hidden;
   }
   .scrollable::-webkit-scrollbar { width: 6px; height: 6px; }
   .scrollable::-webkit-scrollbar-track { background: transparent; }
